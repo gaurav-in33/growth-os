@@ -1,5 +1,16 @@
 package com.growthos.personal.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.growthos.personal.R
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,7 +50,7 @@ import com.growthos.personal.data.TaskEntity
 import kotlinx.coroutines.launch
 
 @Composable
-fun TodayScreen() {
+fun TodayScreen(name: String) {
     val c = Growth.colors
     val context = LocalContext.current
     val dao = remember { AppDatabase.get(context).taskDao() }
@@ -57,6 +68,38 @@ fun TodayScreen() {
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item {
+            val hour = LocalTime.now().hour
+            val greeting = when {
+                hour < 12 -> "Good morning"
+                hour < 17 -> "Good afternoon"
+                else -> "Good evening"
+            }
+            val dateText = LocalDate.now()
+                .format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.profile_photo),
+                    contentDescription = "Profile photo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                )
+                Column {
+                    Text(
+                        text = if (name.isBlank()) greeting else "$greeting, $name",
+                        color = c.textPrimary,
+                        fontSize = 20.sp
+                    )
+                    Text(text = dateText, color = c.textSecondary, fontSize = 14.sp)
+                }
+            }
+        }
+
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
