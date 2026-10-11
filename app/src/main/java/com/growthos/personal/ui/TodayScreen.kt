@@ -115,6 +115,7 @@ fun TodayScreen(name: String) {
             }
         }
 
+        item { WakeCard() }
         item { FocusCard() }
         item { TodayHabitsCard() }
         item { WaterCard() }

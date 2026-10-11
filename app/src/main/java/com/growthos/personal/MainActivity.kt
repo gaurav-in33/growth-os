@@ -1,6 +1,8 @@
 package com.growthos.personal
 
 import android.os.Bundle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +43,9 @@ import com.growthos.personal.ui.GrowthTheme
 import com.growthos.personal.ui.NavTab
 import com.growthos.personal.ui.OnboardingScreen
 import com.growthos.personal.ui.ProfileScreen
+import com.growthos.personal.reminders.ReminderScheduler
+import com.growthos.personal.ui.GrowScreen
+import com.growthos.personal.ui.PlanScreen
 import com.growthos.personal.ui.TodayScreen
 import com.growthos.personal.ui.TrackScreen
 
@@ -62,6 +68,10 @@ fun GrowthApp() {
     var onboarded by remember { mutableStateOf(store.isOnboardingDone()) }
     var name by remember { mutableStateOf(store.name()) }
     var selected by rememberSaveable { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { ReminderScheduler.rescheduleAll(context) }
+    }
 
     val tabs = listOf(
         NavTab("Today", Icons.Filled.Home),
@@ -97,7 +107,9 @@ fun GrowthApp() {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     when (selected) {
                         0 -> TodayScreen(name = name)
+                        1 -> PlanScreen()
                         2 -> TrackScreen()
+                        3 -> GrowScreen()
                         4 -> ProfileScreen(
                             name = name,
                             onSaveName = { newName ->

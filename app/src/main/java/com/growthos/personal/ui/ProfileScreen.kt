@@ -48,6 +48,8 @@ fun ProfileScreen(name: String, onSaveName: (String) -> Unit) {
     ) {
         Text(text = "More", color = c.textPrimary, fontSize = 26.sp)
 
+        DailyReviewCard()
+
         Image(
             painter = painterResource(id = R.drawable.profile_cover),
             contentDescription = "Profile cover photo",

@@ -13,9 +13,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HabitEntity::class,
         HabitCheckin::class,
         FocusSessionEntity::class,
-        WaterDay::class
+        WaterDay::class,
+        RoutineItemEntity::class,
+        GoalEntity::class,
+        WakeConfirmation::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,6 +27,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun habitDao(): HabitDao
     abstract fun focusDao(): FocusDao
     abstract fun waterDao(): WaterDao
+    abstract fun routineDao(): RoutineDao
+    abstract fun goalDao(): GoalDao
+    abstract fun wakeDao(): WakeDao
 
     companion object {
         @Volatile
@@ -38,6 +44,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `routine_items` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `startMinute` INTEGER NOT NULL, `remind` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `goals` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `horizon` TEXT NOT NULL, `progress` INTEGER NOT NULL, `createdEpochDay` INTEGER NOT NULL, `isArchived` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `wake_confirmations` (`epochDay` INTEGER NOT NULL, `confirmedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`epochDay`))")
+            }
+        }
+
         fun get(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -45,7 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "growth_os.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { instance = it }
             }
