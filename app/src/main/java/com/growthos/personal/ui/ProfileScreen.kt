@@ -126,12 +126,6 @@ fun ProfileScreen(name: String, onSaveName: (String) -> Unit) {
 
         NotesCard()
 
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "Settings are coming in a later step.",
-                color = c.textSecondary,
-                fontSize = 15.sp
-            )
-        }
+        SettingsCard()
     }
 }
