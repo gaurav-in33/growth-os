@@ -59,7 +59,7 @@ fun DailyReviewCard() {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(text = "Daily review", color = c.textPrimary, fontSize = 18.sp)
             Text(
-                text = "Recorded facts only. No score or AI opinion yet.",
+                text = "Recorded facts only.",
                 color = c.textSecondary,
                 fontSize = 12.sp
             )

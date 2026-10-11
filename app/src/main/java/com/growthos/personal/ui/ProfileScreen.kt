@@ -48,7 +48,11 @@ fun ProfileScreen(name: String, onSaveName: (String) -> Unit) {
     ) {
         Text(text = "More", color = c.textPrimary, fontSize = 26.sp)
 
+        ScoreCard()
+
         DailyReviewCard()
+
+        WeeklyReportCard()
 
         Image(
             painter = painterResource(id = R.drawable.profile_cover),
@@ -124,7 +128,7 @@ fun ProfileScreen(name: String, onSaveName: (String) -> Unit) {
 
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Score, reports and settings are coming in later steps.",
+                text = "Settings are coming in a later step.",
                 color = c.textSecondary,
                 fontSize = 15.sp
             )

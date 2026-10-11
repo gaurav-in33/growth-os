@@ -86,6 +86,9 @@ interface CheckinDao {
     @Query("SELECT * FROM day_checkins WHERE epochDay = :epochDay")
     fun observe(epochDay: Long): Flow<DayCheckin?>
 
+    @Query("SELECT * FROM day_checkins WHERE epochDay >= :fromDay AND epochDay <= :toDay")
+    fun observeBetween(fromDay: Long, toDay: Long): Flow<List<DayCheckin>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(checkin: DayCheckin)
 }
