@@ -41,6 +41,7 @@ import com.growthos.personal.ui.NavTab
 import com.growthos.personal.ui.OnboardingScreen
 import com.growthos.personal.ui.ProfileScreen
 import com.growthos.personal.ui.TodayScreen
+import com.growthos.personal.ui.TrackScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,6 +97,7 @@ fun GrowthApp() {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     when (selected) {
                         0 -> TodayScreen(name = name)
+                        2 -> TrackScreen()
                         4 -> ProfileScreen(
                             name = name,
                             onSaveName = { newName ->

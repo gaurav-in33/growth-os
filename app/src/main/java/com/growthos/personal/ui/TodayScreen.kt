@@ -115,6 +115,10 @@ fun TodayScreen(name: String) {
             }
         }
 
+        item { FocusCard() }
+        item { TodayHabitsCard() }
+        item { WaterCard() }
+
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
