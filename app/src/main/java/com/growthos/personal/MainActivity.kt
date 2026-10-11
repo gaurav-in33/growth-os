@@ -3,30 +3,94 @@ package com.growthos.personal
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.growthos.personal.ui.GlassBackground
+import com.growthos.personal.ui.GlassCard
+import com.growthos.personal.ui.GlassNavBar
+import com.growthos.personal.ui.Growth
+import com.growthos.personal.ui.GrowthTheme
+import com.growthos.personal.ui.NavTab
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF0B1220)),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(text = "Growth OS", color = Color.White, fontSize = 32.sp)
-                Text(text = "Build test OK", color = Color(0xFF7AA2FF), fontSize = 16.sp)
+            GrowthTheme {
+                GrowthApp()
             }
+        }
+    }
+}
+
+@Composable
+fun GrowthApp() {
+    var selected by rememberSaveable { mutableIntStateOf(0) }
+    val tabs = listOf(
+        NavTab("Today", Icons.Filled.Home),
+        NavTab("Plan", Icons.AutoMirrored.Filled.List),
+        NavTab("Track", Icons.Filled.CheckCircle),
+        NavTab("Grow", Icons.Filled.Star),
+        NavTab("More", Icons.Filled.Menu)
+    )
+
+    GlassBackground {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                PlaceholderScreen(title = tabs[selected].label, isToday = selected == 0)
+            }
+            GlassNavBar(
+                tabs = tabs,
+                selected = selected,
+                onSelect = { selected = it },
+                modifier = Modifier.navigationBarsPadding()
+            )
+        }
+    }
+}
+
+@Composable
+fun PlaceholderScreen(title: String, isToday: Boolean) {
+    val c = Growth.colors
+    Column(
+        modifier = Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = if (isToday) "Today's Command Center" else title,
+            color = c.textPrimary,
+            fontSize = 26.sp
+        )
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = if (isToday) "Your daily dashboard will appear here in the next steps."
+                else "This section is coming in a later step.",
+                color = c.textSecondary,
+                fontSize = 15.sp
+            )
         }
     }
 }
