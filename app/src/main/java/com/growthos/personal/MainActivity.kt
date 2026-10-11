@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -33,6 +34,7 @@ import com.growthos.personal.ui.GlassNavBar
 import com.growthos.personal.ui.Growth
 import com.growthos.personal.ui.GrowthTheme
 import com.growthos.personal.ui.NavTab
+import com.growthos.personal.ui.TodayScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,9 +60,18 @@ fun GrowthApp() {
     )
 
     GlassBackground {
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .imePadding()
+        ) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                PlaceholderScreen(title = tabs[selected].label, isToday = selected == 0)
+                if (selected == 0) {
+                    TodayScreen()
+                } else {
+                    PlaceholderScreen(title = tabs[selected].label)
+                }
             }
             GlassNavBar(
                 tabs = tabs,
@@ -73,21 +84,16 @@ fun GrowthApp() {
 }
 
 @Composable
-fun PlaceholderScreen(title: String, isToday: Boolean) {
+fun PlaceholderScreen(title: String) {
     val c = Growth.colors
     Column(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = if (isToday) "Today's Command Center" else title,
-            color = c.textPrimary,
-            fontSize = 26.sp
-        )
+        Text(text = title, color = c.textPrimary, fontSize = 26.sp)
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = if (isToday) "Your daily dashboard will appear here in the next steps."
-                else "This section is coming in a later step.",
+                text = "This section is coming in a later step.",
                 color = c.textSecondary,
                 fontSize = 15.sp
             )
