@@ -36,6 +36,9 @@ fun DailyReviewCard() {
     val minutesFlow = remember(db) { db.focusDao().observeMinutesSince(startOfDay) }
     val waterFlow = remember(db) { db.waterDao().observe(today) }
     val wakeFlow = remember(db) { db.wakeDao().observe(today) }
+    val checkinFlow = remember(db) { db.checkinDao().observe(today) }
+    val studyFlow = remember(db) { db.studyDao().observeSince(today) }
+    val workoutFlow = remember(db) { db.workoutDao().observeSince(today) }
 
     val tasks by tasksFlow.collectAsState(initial = emptyList())
     val habits by habitsFlow.collectAsState(initial = emptyList())
@@ -43,6 +46,9 @@ fun DailyReviewCard() {
     val focusMinutes by minutesFlow.collectAsState(initial = 0)
     val water by waterFlow.collectAsState(initial = null)
     val wake by wakeFlow.collectAsState(initial = null)
+    val checkin by checkinFlow.collectAsState(initial = null)
+    val studyLogs by studyFlow.collectAsState(initial = emptyList())
+    val workoutLogs by workoutFlow.collectAsState(initial = emptyList())
 
     val openTasks = tasks.filter { !it.isDone }
     val habitsDone = habits.count { h -> checkins.any { it.habitId == h.id && it.epochDay == today } }
@@ -70,6 +76,16 @@ fun DailyReviewCard() {
             )
             Text(text = "Focus: $focusMinutes min completed today", color = c.textPrimary, fontSize = 15.sp)
             Text(text = "Water: ${water ?: 0} glasses", color = c.textPrimary, fontSize = 15.sp)
+            val studyMin = studyLogs.filter { it.kind == "Study" }.sumOf { it.minutes }
+            val codingMin = studyLogs.filter { it.kind == "Coding" }.sumOf { it.minutes }
+            Text(text = "Study: $studyMin min, Coding: $codingMin min", color = c.textPrimary, fontSize = 15.sp)
+            Text(text = "Workout: ${workoutLogs.sumOf { it.minutes }} min", color = c.textPrimary, fontSize = 15.sp)
+            val moodValue = checkin?.mood ?: 0
+            val energyValue = checkin?.energy ?: 0
+            val moodText = if (moodValue == 0) "not logged" else "$moodValue of 5"
+            val energyText = if (energyValue == 0) "not logged" else "$energyValue of 5"
+            Text(text = "Sleep: " + formatSleepMinutes(checkin?.sleepMinutes ?: 0), color = c.textPrimary, fontSize = 15.sp)
+            Text(text = "Mood: $moodText, Energy: $energyText", color = c.textPrimary, fontSize = 15.sp)
             if (settings.wakeEnabled()) {
                 val stamp = wake
                 val line = if (stamp == null) {

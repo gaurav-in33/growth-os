@@ -177,5 +177,9 @@ fun GrowScreen() {
                 }
             }
         }
+
+        StudyCard()
+        FitnessCard()
+        ProjectsCard()
     }
 }

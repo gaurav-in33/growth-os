@@ -16,9 +16,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WaterDay::class,
         RoutineItemEntity::class,
         GoalEntity::class,
-        WakeConfirmation::class
+        WakeConfirmation::class,
+        StudyLogEntity::class,
+        WorkoutLogEntity::class,
+        ProjectEntity::class,
+        DayCheckin::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,6 +34,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun routineDao(): RoutineDao
     abstract fun goalDao(): GoalDao
     abstract fun wakeDao(): WakeDao
+    abstract fun studyDao(): StudyDao
+    abstract fun workoutDao(): WorkoutDao
+    abstract fun projectDao(): ProjectDao
+    abstract fun checkinDao(): CheckinDao
 
     companion object {
         @Volatile
@@ -52,6 +60,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `study_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `epochDay` INTEGER NOT NULL, `kind` TEXT NOT NULL, `minutes` INTEGER NOT NULL, `topic` TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `workout_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `epochDay` INTEGER NOT NULL, `type` TEXT NOT NULL, `minutes` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `projects` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `progress` INTEGER NOT NULL, `createdEpochDay` INTEGER NOT NULL, `isArchived` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `day_checkins` (`epochDay` INTEGER NOT NULL, `mood` INTEGER NOT NULL, `energy` INTEGER NOT NULL, `sleepMinutes` INTEGER NOT NULL, PRIMARY KEY(`epochDay`))")
+            }
+        }
+
         fun get(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -59,7 +76,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "growth_os.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }

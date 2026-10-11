@@ -119,6 +119,7 @@ fun TodayScreen(name: String) {
         item { FocusCard() }
         item { TodayHabitsCard() }
         item { WaterCard() }
+        item { CheckinCard() }
 
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
