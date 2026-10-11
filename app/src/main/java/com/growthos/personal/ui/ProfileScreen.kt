@@ -118,9 +118,13 @@ fun ProfileScreen(name: String, onSaveName: (String) -> Unit) {
             }
         }
 
+        FinanceCard()
+
+        NotesCard()
+
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Reports, finance, notes and settings are coming in later steps.",
+                text = "Score, reports and settings are coming in later steps.",
                 color = c.textSecondary,
                 fontSize = 15.sp
             )
