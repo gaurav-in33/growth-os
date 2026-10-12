@@ -28,6 +28,9 @@ interface GoalDao {
     @Query("UPDATE goals SET progress = :progress WHERE id = :id")
     suspend fun setProgress(id: Long, progress: Int)
 
+    @Query("UPDATE goals SET title = :title WHERE id = :id")
+    suspend fun rename(id: Long, title: String)
+
     @Query("UPDATE goals SET isArchived = 1 WHERE id = :id")
     suspend fun archive(id: Long)
 }

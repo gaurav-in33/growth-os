@@ -25,6 +25,9 @@ interface FinanceDao {
     @Insert
     suspend fun insert(entry: FinanceEntryEntity): Long
 
+    @Query("UPDATE finance_entries SET amountPaise = :amountPaise, note = :note WHERE id = :id")
+    suspend fun update(id: Long, amountPaise: Long, note: String)
+
     @Query("DELETE FROM finance_entries WHERE id = :id")
     suspend fun delete(id: Long)
 }

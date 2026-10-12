@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -55,6 +56,68 @@ private fun parsePaise(text: String): Long? {
     return if (total <= 0L) null else total
 }
 
+private fun paiseToInput(paise: Long): String {
+    val rupees = paise / 100
+    val rest = paise % 100
+    return if (rest == 0L) rupees.toString() else rupees.toString() + "." + rest.toString().padStart(2, '0')
+}
+
+@Composable
+private fun FinanceEditDialog(
+    entry: FinanceEntryEntity,
+    onSave: (Long, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var amount by remember { mutableStateOf(paiseToInput(entry.amountPaise)) }
+    var note by remember { mutableStateOf(entry.note) }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit entry") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = {
+                        amount = it.filter { ch -> ch.isDigit() || ch == '.' }.take(10)
+                        error = null
+                    },
+                    singleLine = true,
+                    label = { Text("Amount (₹)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = error != null,
+                    supportingText = {
+                        val message = error
+                        if (message != null) Text(message)
+                    }
+                )
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    singleLine = true,
+                    label = { Text("Note (optional)") }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val paise = parsePaise(amount.trim())
+                val n = note.trim()
+                if (paise == null) {
+                    error = "Enter an amount like 250 or 99.50"
+                } else if (n.length > 60) {
+                    error = "Keep the note under 60 characters"
+                } else {
+                    onSave(paise, n)
+                }
+            }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
 @Composable
 fun FinanceCard() {
     val c = Growth.colors
@@ -73,6 +136,7 @@ fun FinanceCard() {
     var category by rememberSaveable { mutableStateOf("Food") }
     var note by rememberSaveable { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var editingEntry by remember { mutableStateOf<FinanceEntryEntity?>(null) }
 
     val income = entries.filter { it.kind == "Income" }.sumOf { it.amountPaise }
     val spent = entries.filter { it.kind == "Expense" }.sumOf { it.amountPaise }
@@ -169,6 +233,9 @@ fun FinanceCard() {
                         fontSize = 13.sp,
                         modifier = Modifier.weight(1f)
                     )
+                    TextButton(onClick = { editingEntry = e }) {
+                        Text("Edit", color = c.textSecondary)
+                    }
                     TextButton(onClick = { scope.launch { dao.delete(e.id) } }) {
                         Text("Remove", color = c.textSecondary)
                     }
@@ -182,5 +249,17 @@ fun FinanceCard() {
                 )
             }
         }
+    }
+
+    val entryBeingEdited = editingEntry
+    if (entryBeingEdited != null) {
+        FinanceEditDialog(
+            entry = entryBeingEdited,
+            onSave = { newPaise, newNote ->
+                scope.launch { dao.update(entryBeingEdited.id, newPaise, newNote) }
+                editingEntry = null
+            },
+            onDismiss = { editingEntry = null }
+        )
     }
 }

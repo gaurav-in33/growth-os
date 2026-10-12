@@ -69,6 +69,9 @@ interface ProjectDao {
     @Query("UPDATE projects SET progress = :progress WHERE id = :id")
     suspend fun setProgress(id: Long, progress: Int)
 
+    @Query("UPDATE projects SET name = :name WHERE id = :id")
+    suspend fun rename(id: Long, name: String)
+
     @Query("UPDATE projects SET isArchived = 1 WHERE id = :id")
     suspend fun archive(id: Long)
 }

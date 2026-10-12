@@ -53,6 +53,7 @@ fun GrowScreen() {
     var title by rememberSaveable { mutableStateOf("") }
     var horizon by rememberSaveable { mutableStateOf("Daily") }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var editingGoal by remember { mutableStateOf<GoalEntity?>(null) }
 
     Column(
         modifier = Modifier
@@ -155,6 +156,9 @@ fun GrowScreen() {
                                         fontSize = 13.sp
                                     )
                                 }
+                                TextButton(onClick = { editingGoal = goal }) {
+                                    Text("Edit", color = c.textSecondary)
+                                }
                                 TextButton(onClick = { scope.launch { dao.archive(goal.id) } }) {
                                     Text("Archive", color = c.textSecondary)
                                 }
@@ -181,5 +185,19 @@ fun GrowScreen() {
         StudyCard()
         FitnessCard()
         ProjectsCard()
+    }
+
+    val goalBeingEdited = editingGoal
+    if (goalBeingEdited != null) {
+        TextEditDialog(
+            heading = "Edit goal",
+            initial = goalBeingEdited.title,
+            maxLength = 80,
+            onSave = { newTitle ->
+                scope.launch { dao.rename(goalBeingEdited.id, newTitle) }
+                editingGoal = null
+            },
+            onDismiss = { editingGoal = null }
+        )
     }
 }

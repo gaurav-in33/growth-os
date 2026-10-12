@@ -44,6 +44,7 @@ fun ProjectsCard() {
 
     var name by rememberSaveable { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var editingProject by remember { mutableStateOf<ProjectEntity?>(null) }
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -112,6 +113,9 @@ fun ProjectsCard() {
                                 fontSize = 13.sp
                             )
                         }
+                        TextButton(onClick = { editingProject = project }) {
+                            Text("Edit", color = c.textSecondary)
+                        }
                         TextButton(onClick = { scope.launch { dao.archive(project.id) } }) {
                             Text("Archive", color = c.textSecondary)
                         }
@@ -132,5 +136,19 @@ fun ProjectsCard() {
                 }
             }
         }
+    }
+
+    val projectBeingEdited = editingProject
+    if (projectBeingEdited != null) {
+        TextEditDialog(
+            heading = "Edit project",
+            initial = projectBeingEdited.name,
+            maxLength = 60,
+            onSave = { newName ->
+                scope.launch { dao.rename(projectBeingEdited.id, newName) }
+                editingProject = null
+            },
+            onDismiss = { editingProject = null }
+        )
     }
 }
