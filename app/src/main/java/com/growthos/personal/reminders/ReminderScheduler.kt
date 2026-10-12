@@ -20,18 +20,21 @@ object ReminderScheduler {
     const val CH_ROUTINE = "routine_v1"
     const val CH_CONFIRM = "confirm_v1"
     const val CH_WAKE = "wake_alarm_v1"
+    const val CH_REVIEW = "review_v1"
 
     const val ACTION_ROUTINE = "com.growthos.personal.ROUTINE"
     const val ACTION_WAKE = "com.growthos.personal.WAKE"
     const val ACTION_SNOOZE = "com.growthos.personal.SNOOZE"
     const val ACTION_AWAKE = "com.growthos.personal.AWAKE"
     const val ACTION_WAKE_DISMISSED = "com.growthos.personal.WAKE_DISMISSED"
+    const val ACTION_REVIEW = "com.growthos.personal.REVIEW"
 
     // Snooze is exactly 5 minutes.
     const val SNOOZE_MILLIS = 5 * 60 * 1000L
 
     private const val CODE_WAKE = 1
     private const val CODE_WAKE_SNOOZE = 2
+    private const val CODE_REVIEW = 4
     private const val CODE_ROUTINE_BASE = 1000
     private const val CODE_ROUTINE_SNOOZE_BASE = 3000
 
@@ -59,6 +62,10 @@ object ReminderScheduler {
         )
         wake.enableVibration(true)
         nm.createNotificationChannel(wake)
+
+        val review = NotificationChannel(CH_REVIEW, "Evening review", NotificationManager.IMPORTANCE_DEFAULT)
+        review.description = "A daily nudge to review your day"
+        nm.createNotificationChannel(review)
     }
 
     fun canScheduleExact(context: Context): Boolean {
@@ -170,6 +177,19 @@ object ReminderScheduler {
         am.cancel(broadcast(context, CODE_WAKE_SNOOZE, receiverIntent(context, ACTION_WAKE)))
     }
 
+    // ---------- evening review reminder ----------
+
+    fun scheduleReview(context: Context, minute: Int) {
+        ensureChannels(context)
+        val triggerAt = nextTriggerMillis(minute, System.currentTimeMillis() + 60_000L)
+        setExactCompat(context, triggerAt, broadcast(context, CODE_REVIEW, receiverIntent(context, ACTION_REVIEW)))
+    }
+
+    fun cancelReview(context: Context) {
+        val am = context.getSystemService(AlarmManager::class.java)
+        am.cancel(broadcast(context, CODE_REVIEW, receiverIntent(context, ACTION_REVIEW)))
+    }
+
     // ---------- reschedule everything (app start, reboot, update) ----------
 
     suspend fun rescheduleAll(context: Context) {
@@ -187,6 +207,11 @@ object ReminderScheduler {
             scheduleWake(context, settings.wakeMinute())
         } else {
             cancelWake(context)
+        }
+        if (settings.reviewEnabled() && NotificationRules.reason(settings.reviewMinute()) == null) {
+            scheduleReview(context, settings.reviewMinute())
+        } else {
+            cancelReview(context)
         }
     }
 }

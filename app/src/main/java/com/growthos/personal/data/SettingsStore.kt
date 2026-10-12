@@ -25,6 +25,18 @@ class SettingsStore(context: Context) {
         prefs.edit().putInt("theme_mode", value).apply()
     }
 
+    fun reviewEnabled(): Boolean = prefs.getBoolean("review_enabled", false)
+
+    fun setReviewEnabled(value: Boolean) {
+        prefs.edit().putBoolean("review_enabled", value).apply()
+    }
+
+    fun reviewMinute(): Int = prefs.getInt("review_minute", 21 * 60)
+
+    fun setReviewMinute(value: Int) {
+        prefs.edit().putInt("review_minute", value).apply()
+    }
+
     fun routineSeeded(): Boolean = prefs.getBoolean("routine_seeded", false)
 
     fun setRoutineSeeded() {

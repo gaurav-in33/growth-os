@@ -75,19 +75,19 @@ class MainActivity : ComponentActivity() {
                 onDispose { }
             }
             GrowthTheme {
-                GrowthApp()
+                GrowthApp(initialTab = intent.getIntExtra("open_tab", 0).coerceIn(0, 4))
             }
         }
     }
 }
 
 @Composable
-fun GrowthApp() {
+fun GrowthApp(initialTab: Int = 0) {
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
     var onboarded by remember { mutableStateOf(store.isOnboardingDone()) }
     var name by remember { mutableStateOf(store.name()) }
-    var selected by rememberSaveable { mutableIntStateOf(0) }
+    var selected by rememberSaveable { mutableIntStateOf(initialTab) }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { ReminderScheduler.rescheduleAll(context) }

@@ -52,6 +52,8 @@ fun ProfileScreen(name: String, onSaveName: (String) -> Unit) {
 
         DailyReviewCard()
 
+        ReviewReminderCard()
+
         WeeklyReportCard()
 
         Image(

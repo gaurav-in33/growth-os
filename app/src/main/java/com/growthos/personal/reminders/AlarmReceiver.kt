@@ -28,6 +28,7 @@ class AlarmReceiver : BroadcastReceiver() {
             ReminderScheduler.ACTION_SNOOZE -> handleSnooze(context, intent)
             ReminderScheduler.ACTION_AWAKE -> handleAwake(context)
             ReminderScheduler.ACTION_WAKE_DISMISSED -> showConfirm(context)
+            ReminderScheduler.ACTION_REVIEW -> handleReview(context)
         }
     }
 
@@ -158,6 +159,30 @@ class AlarmReceiver : BroadcastReceiver() {
         }
     }
 
+    // ---------- evening review ----------
+
+    private fun handleReview(context: Context) {
+        val settings = SettingsStore(context)
+        if (!settings.reviewEnabled()) return
+        ReminderScheduler.scheduleReview(context, settings.reviewMinute())
+
+        val now = LocalTime.now()
+        val nowMinute = now.hour * 60 + now.minute
+        if (NotificationRules.reason(nowMinute) != null) return
+
+        ReminderScheduler.ensureChannels(context)
+        val openIntent = Intent(context, MainActivity::class.java).putExtra("open_tab", 4)
+        val openPi = PendingIntent.getActivity(context, 16, openIntent, flags())
+        val notification = NotificationCompat.Builder(context, ReminderScheduler.CH_REVIEW)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle("Evening review")
+            .setContentText("Take a minute to look at your day: score, habits, notes.")
+            .setContentIntent(openPi)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(NOTIF_REVIEW, notification)
+    }
+
     // ---------- snooze ----------
 
     private fun handleSnooze(context: Context, intent: Intent) {
@@ -182,5 +207,6 @@ class AlarmReceiver : BroadcastReceiver() {
     companion object {
         const val NOTIF_WAKE = 1
         const val NOTIF_CONFIRM = 2
+        const val NOTIF_REVIEW = 3
     }
 }
