@@ -17,6 +17,9 @@ interface HabitDao {
     @Insert
     suspend fun insertHabit(habit: HabitEntity): Long
 
+    @Query("UPDATE habits SET name = :name WHERE id = :id")
+    suspend fun rename(id: Long, name: String)
+
     @Query("UPDATE habits SET isArchived = 1 WHERE id = :id")
     suspend fun archive(id: Long)
 

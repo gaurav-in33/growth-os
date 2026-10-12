@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -60,6 +61,8 @@ fun TodayScreen(name: String) {
 
     var newTitle by rememberSaveable { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
+
+    var editingTask by remember { mutableStateOf<TaskEntity?>(null) }
 
     val doneCount = tasks.count { it.isDone }
 
@@ -215,6 +218,9 @@ fun TodayScreen(name: String) {
                         textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
                         modifier = Modifier.weight(1f)
                     )
+                    TextButton(onClick = { editingTask = task }) {
+                        Text("Edit", color = c.textSecondary)
+                    }
                     IconButton(onClick = {
                         scope.launch { dao.delete(task.id) }
                     }) {
@@ -227,5 +233,19 @@ fun TodayScreen(name: String) {
                 }
             }
         }
+    }
+
+    val taskBeingEdited = editingTask
+    if (taskBeingEdited != null) {
+        TextEditDialog(
+            heading = "Edit task",
+            initial = taskBeingEdited.title,
+            maxLength = 120,
+            onSave = { newTitle ->
+                scope.launch { dao.rename(taskBeingEdited.id, newTitle) }
+                editingTask = null
+            },
+            onDismiss = { editingTask = null }
+        )
     }
 }

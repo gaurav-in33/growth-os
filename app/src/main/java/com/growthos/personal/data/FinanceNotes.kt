@@ -45,6 +45,9 @@ interface NoteDao {
     @Insert
     suspend fun insert(note: NoteEntity): Long
 
+    @Query("UPDATE notes SET title = :title, body = :body WHERE id = :id")
+    suspend fun update(id: Long, title: String, body: String)
+
     @Query("DELETE FROM notes WHERE id = :id")
     suspend fun delete(id: Long)
 }

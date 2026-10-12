@@ -46,6 +46,7 @@ fun NotesCard() {
     var body by rememberSaveable { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
     var toDelete by remember { mutableStateOf<NoteEntity?>(null) }
+    var editing by remember { mutableStateOf<NoteEntity?>(null) }
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -123,6 +124,9 @@ fun NotesCard() {
                             )
                             Text(text = stamp, color = c.textSecondary, fontSize = 12.sp)
                         }
+                        TextButton(onClick = { editing = n }) {
+                            Text("Edit", color = c.textSecondary)
+                        }
                         TextButton(onClick = { toDelete = n }) {
                             Text("Remove", color = c.textSecondary)
                         }
@@ -138,6 +142,19 @@ fun NotesCard() {
                 )
             }
         }
+    }
+
+    val noteBeingEdited = editing
+    if (noteBeingEdited != null) {
+        NoteEditDialog(
+            initialTitle = noteBeingEdited.title,
+            initialBody = noteBeingEdited.body,
+            onSave = { newTitle, newBody ->
+                scope.launch { dao.update(noteBeingEdited.id, newTitle, newBody) }
+                editing = null
+            },
+            onDismiss = { editing = null }
+        )
     }
 
     val pending = toDelete

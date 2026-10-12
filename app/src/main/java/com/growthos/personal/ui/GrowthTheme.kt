@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,9 +70,21 @@ object Growth {
         get() = LocalGrowthColors.current
 }
 
+object ThemePrefs {
+    // 0 = follow system, 1 = light, 2 = dark
+    var mode by mutableIntStateOf(0)
+}
+
+@Composable
+fun resolveDark(): Boolean = when (ThemePrefs.mode) {
+    1 -> false
+    2 -> true
+    else -> isSystemInDarkTheme()
+}
+
 @Composable
 fun GrowthTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) DarkColors else LightColors
+    val colors = if (resolveDark()) DarkColors else LightColors
     CompositionLocalProvider(LocalGrowthColors provides colors) {
         content()
     }

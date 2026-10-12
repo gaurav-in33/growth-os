@@ -19,6 +19,12 @@ class SettingsStore(context: Context) {
         prefs.edit().putInt("wake_minute", value).apply()
     }
 
+    fun themeMode(): Int = prefs.getInt("theme_mode", 0)
+
+    fun setThemeMode(value: Int) {
+        prefs.edit().putInt("theme_mode", value).apply()
+    }
+
     fun routineSeeded(): Boolean = prefs.getBoolean("routine_seeded", false)
 
     fun setRoutineSeeded() {

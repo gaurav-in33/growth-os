@@ -123,6 +123,7 @@ fun TrackScreen() {
 
     var newName by rememberSaveable { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var editingHabit by remember { mutableStateOf<HabitEntity?>(null) }
 
     Column(
         modifier = Modifier
@@ -203,6 +204,9 @@ fun TrackScreen() {
                             fontSize = 13.sp
                         )
                     }
+                    TextButton(onClick = { editingHabit = habit }) {
+                        Text("Edit", color = c.textSecondary)
+                    }
                     TextButton(onClick = { scope.launch { dao.archive(habit.id) } }) {
                         Text("Archive", color = c.textSecondary)
                     }
@@ -219,5 +223,26 @@ fun TrackScreen() {
                 fontSize = 13.sp
             )
         }
+    }
+
+    val habitBeingEdited = editingHabit
+    if (habitBeingEdited != null) {
+        TextEditDialog(
+            heading = "Edit habit",
+            initial = habitBeingEdited.name,
+            maxLength = 40,
+            onSave = { newHabitName ->
+                scope.launch { dao.rename(habitBeingEdited.id, newHabitName) }
+                editingHabit = null
+            },
+            onDismiss = { editingHabit = null },
+            extraCheck = { candidate ->
+                if (habits.any { it.id != habitBeingEdited.id && it.name.equals(candidate, ignoreCase = true) }) {
+                    "You already have this habit"
+                } else {
+                    null
+                }
+            }
+        )
     }
 }

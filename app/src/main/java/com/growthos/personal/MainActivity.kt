@@ -4,6 +4,7 @@ import android.os.Bundle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -35,6 +37,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.growthos.personal.data.ProfileStore
+import com.growthos.personal.data.SettingsStore
+import com.growthos.personal.ui.ThemePrefs
+import com.growthos.personal.ui.resolveDark
 import com.growthos.personal.ui.GlassBackground
 import com.growthos.personal.ui.GlassCard
 import com.growthos.personal.ui.GlassNavBar
@@ -53,7 +58,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ThemePrefs.mode = SettingsStore(this).themeMode()
         setContent {
+            val dark = resolveDark()
+            DisposableEffect(dark) {
+                this@MainActivity.enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT
+                    ) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT
+                    ) { dark }
+                )
+                onDispose { }
+            }
             GrowthTheme {
                 GrowthApp()
             }

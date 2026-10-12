@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.growthos.personal.data.BackupTools
+import com.growthos.personal.data.SettingsStore
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -95,6 +96,19 @@ fun SettingsCard() {
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(text = "Settings", color = c.textPrimary, fontSize = 18.sp)
+            Text(text = "Appearance", color = c.textPrimary, fontSize = 15.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("System", "Light", "Dark").forEachIndexed { index, label ->
+                    LogChip(
+                        label = label,
+                        selected = ThemePrefs.mode == index,
+                        onClick = {
+                            ThemePrefs.mode = index
+                            SettingsStore(context).setThemeMode(index)
+                        }
+                    )
+                }
+            }
             Text(text = "Backup", color = c.textPrimary, fontSize = 15.sp)
             Text(
                 text = "Your data is stored only on this phone and the app has no internet access. " +
