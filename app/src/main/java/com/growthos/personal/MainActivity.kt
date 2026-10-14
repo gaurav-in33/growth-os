@@ -33,6 +33,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,6 +99,13 @@ fun GrowthApp(initialTab: Int = 0) {
         withContext(Dispatchers.IO) { ReminderScheduler.rescheduleAll(context) }
     }
 
+    LaunchedEffect(Unit) {
+        if (store.name() == "German") {
+            store.setName("Gourav")
+            name = "Gourav"
+        }
+    }
+
     val tabs = listOf(
         NavTab("Today", Icons.Filled.Home),
         NavTab("Plan", Icons.AutoMirrored.Filled.List),
@@ -124,9 +137,25 @@ fun GrowthApp(initialTab: Int = 0) {
                     .statusBarsPadding()
                     .imePadding()
             ) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f to Color.Black,
+                                    0.95f to Color.Black,
+                                    1f to Color.Transparent
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
+                ) {
                     when (selected) {
-                        0 -> TodayScreen(name = name)
+                        0 -> TodayScreen(name = name, onOpenPlan = { selected = 1 })
                         1 -> PlanScreen()
                         2 -> TrackScreen()
                         3 -> GrowScreen()

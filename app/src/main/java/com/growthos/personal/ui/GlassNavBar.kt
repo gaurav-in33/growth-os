@@ -1,15 +1,14 @@
 package com.growthos.personal.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -25,13 +24,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -46,32 +47,40 @@ fun GlassNavBar(
 ) {
     val c = Growth.colors
     val shape = RoundedCornerShape(36.dp)
-    val barFill = if (c.isDark) Color(0xFF0B0F1A).copy(alpha = 0.85f) else Color.White.copy(alpha = 0.75f)
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .height(72.dp)
+            .shadow(14.dp, shape, ambientColor = c.tint, spotColor = c.tint)
             .clip(shape)
-            .background(barFill)
-            .border(BorderStroke(1.dp, c.glassBorder), shape)
+            .background(c.navFill)
+            .border(
+                BorderStroke(1.dp, Brush.linearGradient(listOf(c.edge, c.edge.copy(alpha = 0.2f)))),
+                shape
+            )
     ) {
         val itemWidth = maxWidth / tabs.size
+        // Plain, quick slide (no bounce) so the bubble never lags behind the tap.
         val bubbleX by animateDpAsState(
             targetValue = itemWidth * selected,
-            animationSpec = spring(dampingRatio = 0.55f, stiffness = 300f),
+            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
             label = "bubbleX"
         )
 
         Box(
             modifier = Modifier
-                .offset(x = bubbleX + (itemWidth - 56.dp) / 2, y = 8.dp)
-                .size(56.dp)
+                .offset(x = bubbleX + (itemWidth - 54.dp) / 2, y = 9.dp)
+                .size(54.dp)
+                .shadow(12.dp, CircleShape, ambientColor = c.glow, spotColor = c.glow)
                 .clip(CircleShape)
+                .background(Brush.linearGradient(listOf(c.accent2, c.accent)))
                 .background(
-                    Brush.radialGradient(
-                        listOf(c.accent, c.accent.copy(alpha = 0.55f))
+                    Brush.linearGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.5f), Color.Transparent),
+                        start = Offset(0f, 0f),
+                        end = Offset(110f, 110f)
                     )
                 )
         )
@@ -83,10 +92,7 @@ fun GlassNavBar(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onSelect(index) },
+                        .clickNoRipple { onSelect(index) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -100,7 +106,8 @@ fun GlassNavBar(
                         Text(
                             text = tab.label,
                             color = c.textSecondary,
-                            fontSize = 11.sp
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

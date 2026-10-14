@@ -1,19 +1,19 @@
 package com.growthos.personal.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.growthos.personal.data.AppDatabase
@@ -47,32 +47,43 @@ fun WakeCard() {
     if (stamp == null && nowMinute < wakeMinute) return
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = "Wake-up", color = c.textPrimary, fontSize = 18.sp)
-            if (stamp != null) {
-                val z = Instant.ofEpochMilli(stamp).atZone(ZoneId.systemDefault())
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Awake confirmed at " + formatMinute(z.hour * 60 + z.minute),
+                    text = "Wake-up",
                     color = c.textSecondary,
-                    fontSize = 14.sp
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
-            } else {
-                Text(
-                    text = "Your alarm time (" + formatMinute(wakeMinute) + ") has passed. Are you up?",
-                    color = c.textSecondary,
-                    fontSize = 14.sp
-                )
-                Button(
+                if (stamp != null) {
+                    val z = Instant.ofEpochMilli(stamp).atZone(ZoneId.systemDefault())
+                    Text(
+                        text = "Awake at " + formatMinute(z.hour * 60 + z.minute),
+                        color = c.textPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Text(
+                        text = "Alarm was " + formatMinute(wakeMinute),
+                        color = c.textPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            if (stamp == null) {
+                GlowButton(
+                    text = "I'm awake",
                     onClick = {
                         scope.launch {
                             dao.upsert(WakeConfirmation(today, System.currentTimeMillis()))
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = c.accent, contentColor = Color.White)
-                ) {
-                    Text("I'm awake")
-                }
+                    }
+                )
             }
         }
     }

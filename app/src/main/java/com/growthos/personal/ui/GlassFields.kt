@@ -11,7 +11,7 @@ fun glassFieldColors(): TextFieldColors {
         focusedTextColor = c.textPrimary,
         unfocusedTextColor = c.textPrimary,
         focusedBorderColor = c.accent,
-        unfocusedBorderColor = c.glassBorder,
+        unfocusedBorderColor = c.textTertiary,
         cursorColor = c.accent,
         focusedPlaceholderColor = c.textSecondary,
         unfocusedPlaceholderColor = c.textSecondary,

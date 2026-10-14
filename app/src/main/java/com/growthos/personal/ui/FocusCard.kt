@@ -4,10 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,8 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.growthos.personal.data.AppDatabase
@@ -32,7 +28,7 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 
 @Composable
-fun FocusCard() {
+fun FocusCard(modifier: Modifier = Modifier) {
     val c = Growth.colors
     val context = LocalContext.current
     val dao = remember { AppDatabase.get(context).focusDao() }
@@ -60,7 +56,7 @@ fun FocusCard() {
                 }
                 val lateBy = now - endAtMillis
                 if (lateBy > 10_000L) {
-                    message = "Timer was interrupted, so this session was not counted."
+                    message = "Timer was interrupted, not counted."
                 } else {
                     dao.insert(FocusSessionEntity(endedAtMillis = now, minutes = selectedMinutes))
                     message = "Session complete. Nice work!"
@@ -74,62 +70,54 @@ fun FocusCard() {
 
     val shownSec = if (running) remainingSec else selectedMinutes * 60
 
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
+    GlassCard(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(text = "Focus timer", color = c.textPrimary, fontSize = 18.sp)
+            TileLabel("Focus")
             Text(
                 text = String.format(Locale.US, "%02d:%02d", shownSec / 60, shownSec % 60),
                 color = c.textPrimary,
-                fontSize = 44.sp
+                fontSize = 34.sp,
+                fontWeight = FontWeight.ExtraBold
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(25, 45, 60).forEach { m ->
-                    FilterChip(
+                    MiniChip(
+                        label = m.toString(),
                         selected = selectedMinutes == m,
-                        onClick = { if (!running) selectedMinutes = m },
-                        enabled = !running,
-                        label = { Text("$m min") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            labelColor = c.textPrimary,
-                            selectedContainerColor = c.accent,
-                            selectedLabelColor = Color.White
-                        )
+                        onClick = { if (!running) selectedMinutes = m }
                     )
                 }
             }
-            Button(
-                onClick = {
-                    if (running) {
+            if (running) {
+                SoftButton(
+                    text = "Stop",
+                    onClick = {
                         endAtMillis = 0L
                         remainingSec = 0
-                        message = "Timer stopped. This session was not counted."
-                    } else {
+                        message = "Stopped, not counted."
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                GlowButton(
+                    text = "Start",
+                    onClick = {
                         message = null
                         endAtMillis = System.currentTimeMillis() + selectedMinutes * 60_000L
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = c.accent,
-                    contentColor = Color.White
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
-            ) {
-                Text(if (running) "Stop (not counted)" else "Start focus")
             }
-            Text(
-                text = "Focused today: $todayMinutes min",
-                color = c.textSecondary,
-                fontSize = 14.sp
-            )
             val note = message
-            if (note != null) {
-                Text(text = note, color = c.textSecondary, fontSize = 13.sp)
-            } else {
-                Text(
-                    text = "Keep the app open while the timer runs. Only completed sessions are counted.",
-                    color = c.textSecondary,
-                    fontSize = 12.sp
-                )
-            }
+            Text(
+                text = when {
+                    running -> "Keep the app open"
+                    note != null -> note
+                    else -> "$todayMinutes min today"
+                },
+                color = c.textSecondary,
+                fontSize = 12.5.sp
+            )
         }
     }
 }

@@ -9,18 +9,27 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -37,8 +46,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -48,6 +65,7 @@ import com.growthos.personal.data.SettingsStore
 import com.growthos.personal.reminders.NotificationRules
 import com.growthos.personal.reminders.ReminderScheduler
 import com.growthos.personal.reminders.formatMinute
+import java.time.LocalTime
 import kotlinx.coroutines.launch
 
 private val DEFAULT_ROUTINE = listOf(
@@ -80,8 +98,14 @@ fun PlanScreen() {
     var notice by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<RoutineItemEntity?>(null) }
     var showAdd by remember { mutableStateOf(false) }
+    var showTips by remember { mutableStateOf(false) }
     var afterPermission by remember { mutableStateOf<(() -> Unit)?>(null) }
     var exactOk by remember { mutableStateOf(ReminderScheduler.canScheduleExact(context)) }
+
+    val nowMin = remember {
+        val t = LocalTime.now()
+        t.hour * 60 + t.minute
+    }
 
     LaunchedEffect(Unit) {
         if (!settings.routineSeeded() && dao.count() == 0) {
@@ -96,8 +120,7 @@ fun PlanScreen() {
         if (granted) {
             afterPermission?.invoke()
         } else {
-            notice = "Notifications are blocked, so reminders cannot appear. " +
-                "You can allow them in Android Settings > Apps > Growth OS > Notifications."
+            notice = "Notifications are blocked. Allow them in Android Settings > Apps > Growth OS."
         }
         afterPermission = null
     }
@@ -116,27 +139,62 @@ fun PlanScreen() {
 
     val sleepMinutes = (wakeMinute + 24 * 60 - 23 * 60) % (24 * 60)
     val sleepHours = sleepMinutes / 60f
+    val currentIndex = items.indexOfLast { it.startMinute <= nowMin }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(text = "Plan", color = c.textPrimary, fontSize = 26.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ScreenTitle("Plan", modifier = Modifier.weight(1f))
+            AddButton(onClick = { showAdd = true }, diameter = 40.dp)
+        }
 
         // ----- wake-up alarm -----
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        GlassCard(modifier = Modifier.fillMaxWidth(), glow = true, padding = 18.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Wake-up alarm", color = c.textPrimary, fontSize = 17.sp)
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "Rings at ${formatMinute(wakeMinute)} even during quiet hours",
+                            text = "Wake-up",
                             color = c.textSecondary,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
+                        Text(
+                            text = formatMinute(wakeMinute),
+                            color = c.textPrimary,
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Change time",
+                                color = c.accent,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clickNoRipple {
+                                    TimePickerDialog(
+                                        context,
+                                        { _, hour, minute ->
+                                            wakeMinute = hour * 60 + minute
+                                            settings.setWakeMinute(wakeMinute)
+                                            if (wakeEnabled) ReminderScheduler.scheduleWake(context, wakeMinute)
+                                        },
+                                        wakeMinute / 60,
+                                        wakeMinute % 60,
+                                        false
+                                    ).show()
+                                }
+                            )
+                            TagPill("Sleep " + String.format(java.util.Locale.US, "%.1f", sleepHours) + " h")
+                        }
                     }
                     Switch(
                         checked = wakeEnabled,
@@ -156,62 +214,45 @@ fun PlanScreen() {
                         },
                         colors = SwitchDefaults.colors(
                             checkedTrackColor = c.accent,
-                            checkedThumbColor = Color.White
+                            checkedThumbColor = Color.White,
+                            uncheckedTrackColor = c.track,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedBorderColor = Color.Transparent
                         )
                     )
                 }
-                TextButton(onClick = {
-                    TimePickerDialog(
-                        context,
-                        { _, hour, minute ->
-                            wakeMinute = hour * 60 + minute
-                            settings.setWakeMinute(wakeMinute)
-                            if (wakeEnabled) ReminderScheduler.scheduleWake(context, wakeMinute)
-                        },
-                        wakeMinute / 60,
-                        wakeMinute % 60,
-                        false
-                    ).show()
-                }) {
-                    Text("Change wake-up time", color = c.accent)
-                }
-                if (!exactOk && Build.VERSION.SDK_INT >= 31) {
+                if (wakeEnabled && !exactOk && Build.VERSION.SDK_INT >= 31) {
                     Text(
-                        text = "Android needs the 'Alarms & reminders' permission for exact alarms. " +
-                            "Without it the alarm can be a few minutes late.",
-                        color = c.textSecondary,
-                        fontSize = 12.sp
-                    )
-                    TextButton(onClick = {
-                        context.startActivity(
-                            Intent(
-                                Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                                Uri.parse("package:" + context.packageName)
+                        text = "Allow exact alarms so it rings on time",
+                        color = c.accent,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickNoRipple {
+                            context.startActivity(
+                                Intent(
+                                    Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                    Uri.parse("package:" + context.packageName)
+                                )
                             )
-                        )
-                    }) {
-                        Text("Allow exact alarms", color = c.accent)
-                    }
+                        }
+                    )
                 }
                 Text(
-                    text = "After you dismiss the alarm you must tap I'm awake. Snooze is exactly 5 minutes. " +
-                        "The alarm sound stops by itself after 90 seconds. Battery saver, Do Not Disturb " +
-                        "and phone-maker settings can still delay or silence alarms, so please test it once.",
+                    text = if (showTips) "Hide alarm tips" else "Alarm tips",
                     color = c.textSecondary,
-                    fontSize = 12.sp
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickNoRipple { showTips = !showTips }
                 )
-            }
-        }
-
-        if (sleepHours < 7f) {
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Sleep note: with a ${formatMinute(wakeMinute)} wake-up and an 11:00 PM bedtime " +
-                        "target, your sleep window is about ${String.format(java.util.Locale.US, "%.1f", sleepHours)} " +
-                        "hours. You may want to review it when it suits you. Nothing was changed.",
-                    color = c.textSecondary,
-                    fontSize = 13.sp
-                )
+                if (showTips) {
+                    Text(
+                        text = "After you dismiss the alarm, tap I'm awake. Snooze is exactly 5 minutes " +
+                            "and the sound stops by itself after 90 seconds. Battery saver, Do Not Disturb " +
+                            "and phone-maker settings can delay alarms, so test it once.",
+                        color = c.textSecondary,
+                        fontSize = 12.5.sp
+                    )
+                }
             }
         }
 
@@ -222,15 +263,12 @@ fun PlanScreen() {
             }
         }
 
-        // ----- routine -----
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "Daily routine",
-                color = c.textPrimary,
-                fontSize = 20.sp,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(onClick = {
+        DayBarCard(nowMin = nowMin)
+
+        SectionHeader(
+            title = "Routine",
+            trailing = "Remind all",
+            onTrailing = {
                 withNotificationPermission {
                     scope.launch {
                         for (item in items) {
@@ -241,32 +279,33 @@ fun PlanScreen() {
                         }
                     }
                 }
-            }) {
-                Text("Remind all", color = c.accent)
             }
-        }
-        Text(
-            text = "Quiet hours are 10 PM to 5 AM. The 10 AM to 12 PM computer class is a protected " +
-                "block with no routine reminders. Tap an item to edit it.",
-            color = c.textSecondary,
-            fontSize = 12.sp
         )
 
-        items.forEach { item ->
-            val reason = NotificationRules.reason(item.startMinute)
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { editing = item }
+        Column {
+            items.forEachIndexed { index, item ->
+                val reason = NotificationRules.reason(item.startMinute)
+                val status = when {
+                    item.startMinute > nowMin -> 2
+                    index == currentIndex -> 1
+                    else -> 0
+                }
+                TimelineRow(
+                    timeText = formatMinute(item.startMinute),
+                    status = status,
+                    isFirst = index == 0,
+                    isLast = index == items.lastIndex,
+                    onClick = { editing = item }
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = formatMinute(item.startMinute), color = c.accent, fontSize = 13.sp)
-                        Text(text = item.title, color = c.textPrimary, fontSize = 16.sp)
-                    }
+                    Text(
+                        text = item.title,
+                        color = if (status == 0) c.textSecondary else c.textPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
                     if (reason != null) {
-                        Text(text = reason, color = c.textSecondary, fontSize = 12.sp)
+                        TagPill(if (reason.startsWith("Protected")) "Protected" else "Quiet")
                     } else {
                         Switch(
                             checked = item.remind,
@@ -289,19 +328,15 @@ fun PlanScreen() {
                             },
                             colors = SwitchDefaults.colors(
                                 checkedTrackColor = c.accent,
-                                checkedThumbColor = Color.White
+                                checkedThumbColor = Color.White,
+                                uncheckedTrackColor = c.track,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedBorderColor = Color.Transparent
                             )
                         )
                     }
                 }
             }
-        }
-
-        Button(
-            onClick = { showAdd = true },
-            colors = ButtonDefaults.buttonColors(containerColor = c.accent, contentColor = Color.White)
-        ) {
-            Text("Add routine item")
         }
     }
 
@@ -350,6 +385,164 @@ fun PlanScreen() {
 }
 
 @Composable
+private fun TimelineRow(
+    timeText: String,
+    status: Int,
+    isFirst: Boolean,
+    isLast: Boolean,
+    onClick: () -> Unit,
+    content: @Composable RowScope.() -> Unit
+) {
+    val c = Growth.colors
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Text(
+            text = timeText,
+            color = c.textSecondary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            modifier = Modifier.width(66.dp).padding(top = 17.dp, end = 4.dp)
+        )
+        Box(
+            modifier = Modifier
+                .width(22.dp)
+                .fillMaxHeight()
+                .drawBehind {
+                    val x = this.size.width / 2f
+                    val dotY = 24.dp.toPx()
+                    val lineColor = if (status == 2) c.glassBorder else c.accent.copy(alpha = 0.7f)
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, if (isFirst) dotY else 0f),
+                        end = Offset(x, if (isLast) dotY else this.size.height),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                    if (status == 1) {
+                        drawCircle(color = c.tint, radius = 11.dp.toPx(), center = Offset(x, dotY))
+                    }
+                    drawCircle(
+                        color = if (status == 2) c.textTertiary.copy(alpha = 0.5f) else c.accent,
+                        radius = 6.dp.toPx(),
+                        center = Offset(x, dotY)
+                    )
+                }
+        )
+        Box(modifier = Modifier.weight(1f).padding(start = 8.dp, bottom = 10.dp)) {
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick),
+                highlight = status == 1,
+                padding = 12.dp,
+                cornerRadius = 20.dp
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    content()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayBarCard(nowMin: Int) {
+    val c = Growth.colors
+    val startDay = 300
+    val endDay = 1380
+    fun frac(m: Int): Float = ((m - startDay).toFloat() / (endDay - startDay)).coerceIn(0f, 1f)
+
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Today",
+                    color = c.textSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = formatMinute(nowMin),
+                    color = c.textPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Canvas(modifier = Modifier.fillMaxWidth().height(26.dp)) {
+                val w = this.size.width
+                val h = 14.dp.toPx()
+                val top = (this.size.height - h) / 2f
+                val radius = CornerRadius(h / 2f, h / 2f)
+                drawRoundRect(
+                    color = c.track,
+                    topLeft = Offset(0f, top),
+                    size = Size(w, h),
+                    cornerRadius = radius
+                )
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(listOf(c.accent, c.accent2)),
+                    topLeft = Offset(0f, top),
+                    size = Size((w * frac(nowMin)).coerceAtLeast(h), h),
+                    cornerRadius = radius
+                )
+                val ps = w * frac(NotificationRules.PROTECTED_START)
+                val pe = w * frac(NotificationRules.PROTECTED_END)
+                drawRect(
+                    color = Color.White.copy(alpha = 0.6f),
+                    topLeft = Offset(ps, top),
+                    size = Size(pe - ps, h)
+                )
+                val qs = w * frac(NotificationRules.QUIET_START)
+                drawRect(
+                    color = c.textTertiary.copy(alpha = 0.55f),
+                    topLeft = Offset(qs, top),
+                    size = Size(w - qs, h)
+                )
+                val nx = w * frac(nowMin)
+                drawRoundRect(
+                    color = Color.White,
+                    topLeft = Offset(nx - 2.5.dp.toPx(), top - 4.dp.toPx()),
+                    size = Size(5.dp.toPx(), h + 8.dp.toPx()),
+                    cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
+                )
+            }
+            Row {
+                Text(text = "5 AM", color = c.textTertiary, fontSize = 11.5.sp, modifier = Modifier.weight(1f))
+                Text(text = "11 PM", color = c.textTertiary, fontSize = 11.5.sp)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LegendDot(color = Color.White.copy(alpha = 0.9f), label = "Protected")
+                LegendDot(color = c.textTertiary.copy(alpha = 0.7f), label = "Quiet")
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendDot(color: Color, label: String) {
+    val c = Growth.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(width = 14.dp, height = 10.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(color)
+        )
+        Text(
+            text = label,
+            color = c.textSecondary,
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 6.dp)
+        )
+    }
+}
+
+@Composable
 fun RoutineEditDialog(
     initial: RoutineItemEntity?,
     onDismiss: () -> Unit,
@@ -364,7 +557,7 @@ fun RoutineEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = if (c.isDark) Color(0xFF14203A) else Color.White,
+        containerColor = c.solid,
         titleContentColor = c.textPrimary,
         textContentColor = c.textPrimary,
         title = { Text(if (initial == null) "Add routine item" else "Edit routine item") },

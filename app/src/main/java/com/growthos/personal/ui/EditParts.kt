@@ -20,10 +20,14 @@ fun TextEditDialog(
     onDismiss: () -> Unit,
     extraCheck: (String) -> String? = { null }
 ) {
+    val c = Growth.colors
     var text by remember { mutableStateOf(initial) }
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = c.solid,
+        titleContentColor = c.textPrimary,
+        textContentColor = c.textPrimary,
         title = { Text(heading) },
         text = {
             OutlinedTextField(
@@ -37,7 +41,8 @@ fun TextEditDialog(
                 supportingText = {
                     val message = error
                     if (message != null) Text(message)
-                }
+                },
+                colors = glassFieldColors()
             )
         },
         confirmButton = {
@@ -53,10 +58,10 @@ fun TextEditDialog(
                 } else {
                     onSave(t)
                 }
-            }) { Text("Save") }
+            }) { Text("Save", color = c.accent) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
         }
     )
 }
@@ -68,11 +73,15 @@ fun NoteEditDialog(
     onSave: (String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val c = Growth.colors
     var title by remember { mutableStateOf(initialTitle) }
     var body by remember { mutableStateOf(initialBody) }
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = c.solid,
+        titleContentColor = c.textPrimary,
+        textContentColor = c.textPrimary,
         title = { Text("Edit note") },
         text = {
             androidx.compose.foundation.layout.Column(
@@ -82,7 +91,8 @@ fun NoteEditDialog(
                     value = title,
                     onValueChange = { title = it },
                     singleLine = true,
-                    label = { Text("Title (optional)") }
+                    label = { Text("Title (optional)") },
+                    colors = glassFieldColors()
                 )
                 OutlinedTextField(
                     value = body,
@@ -97,7 +107,8 @@ fun NoteEditDialog(
                     supportingText = {
                         val message = error
                         if (message != null) Text(message)
-                    }
+                    },
+                    colors = glassFieldColors()
                 )
             }
         },
@@ -114,10 +125,10 @@ fun NoteEditDialog(
                 } else {
                     onSave(t, b)
                 }
-            }) { Text("Save") }
+            }) { Text("Save", color = c.accent) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
         }
     )
 }
