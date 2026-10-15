@@ -263,6 +263,8 @@ fun PlanScreen() {
             }
         }
 
+        AlarmCheckCard()
+
         DayBarCard(nowMin = nowMin)
 
         SectionHeader(

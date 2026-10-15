@@ -26,7 +26,7 @@ class AlarmReceiver : BroadcastReceiver() {
             ReminderScheduler.ACTION_ROUTINE -> handleRoutine(context, intent)
             ReminderScheduler.ACTION_WAKE -> handleWake(context, intent)
             ReminderScheduler.ACTION_SNOOZE -> handleSnooze(context, intent)
-            ReminderScheduler.ACTION_AWAKE -> handleAwake(context)
+            ReminderScheduler.ACTION_AWAKE -> handleAwake(context, intent)
             ReminderScheduler.ACTION_WAKE_DISMISSED -> showConfirm(context)
             ReminderScheduler.ACTION_REVIEW -> handleReview(context)
         }
@@ -50,9 +50,10 @@ class AlarmReceiver : BroadcastReceiver() {
             ReminderScheduler.scheduleRoutine(context, id, title, minute)
         }
 
+        val test = intent.getBooleanExtra("test", false)
         val now = LocalTime.now()
         val nowMinute = now.hour * 60 + now.minute
-        if (NotificationRules.reason(nowMinute) != null) return
+        if (!test && NotificationRules.reason(nowMinute) != null) return
 
         val snoozeIntent = Intent(context, AlarmReceiver::class.java)
             .setAction(ReminderScheduler.ACTION_SNOOZE)
@@ -65,7 +66,14 @@ class AlarmReceiver : BroadcastReceiver() {
         val notification = NotificationCompat.Builder(context, ReminderScheduler.CH_ROUTINE)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle(title)
-            .setContentText("Time for your routine: " + formatMinute(minute))
+            .setContentText(
+                if (test) "This is how your reminders will look"
+                else "Time for your routine: " + formatMinute(minute)
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openAppIntent(context, 20))
             .setAutoCancel(true)
             .addAction(0, "Snooze 5 min", snoozePi)
@@ -76,13 +84,19 @@ class AlarmReceiver : BroadcastReceiver() {
     // ---------- wake-up alarm ----------
 
     private fun handleWake(context: Context, intent: Intent) {
+        val test = intent.getBooleanExtra("test", false)
         val settings = SettingsStore(context)
-        if (!settings.wakeEnabled()) return
+        if (!test && !settings.wakeEnabled()) return
         val snoozed = intent.getBooleanExtra("snoozed", false)
         if (!snoozed) {
             ReminderScheduler.scheduleWake(context, settings.wakeMinute())
         }
-        showWake(context)
+        try {
+            // Real alarm: ringtone + vibration + full-screen "I'm awake" screen.
+            AlarmService.start(context, test)
+        } catch (e: Exception) {
+            showWake(context)
+        }
     }
 
     private fun showWake(context: Context) {
@@ -106,7 +120,7 @@ class AlarmReceiver : BroadcastReceiver() {
             flags()
         )
 
-        val notification = NotificationCompat.Builder(context, ReminderScheduler.CH_WAKE)
+        val notification = NotificationCompat.Builder(context, ReminderScheduler.CH_WAKE_FALLBACK)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("Wake up!")
             .setContentText("Tap I'm awake to confirm. Snooze gives 5 more minutes.")
@@ -124,28 +138,17 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     private fun showConfirm(context: Context) {
-        ReminderScheduler.ensureChannels(context)
-        val awakePi = PendingIntent.getBroadcast(
-            context, 11,
-            Intent(context, AlarmReceiver::class.java).setAction(ReminderScheduler.ACTION_AWAKE),
-            flags()
-        )
-        val notification = NotificationCompat.Builder(context, ReminderScheduler.CH_CONFIRM)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("Alarm dismissed")
-            .setContentText("Are you awake? Tap I'm awake to confirm.")
-            .setContentIntent(openAppIntent(context, 15))
-            .setAutoCancel(true)
-            .addAction(0, "I'm awake", awakePi)
-            .build()
-        NotificationManagerCompat.from(context).notify(NOTIF_CONFIRM, notification)
+        Companion.showConfirm(context)
     }
 
-    private fun handleAwake(context: Context) {
+    private fun handleAwake(context: Context, intent: Intent) {
+        val test = intent.getBooleanExtra("test", false)
+        AlarmService.stop(context)
         val nm = NotificationManagerCompat.from(context)
         nm.cancel(NOTIF_WAKE)
         nm.cancel(NOTIF_CONFIRM)
         ReminderScheduler.cancelWakeSnooze(context)
+        if (test) return
 
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
@@ -189,9 +192,12 @@ class AlarmReceiver : BroadcastReceiver() {
         val nm = NotificationManagerCompat.from(context)
         when (intent.getStringExtra("type")) {
             "wake" -> {
+                AlarmService.stop(context)
                 nm.cancel(NOTIF_WAKE)
                 nm.cancel(NOTIF_CONFIRM)
-                ReminderScheduler.scheduleWakeSnooze(context)
+                if (!intent.getBooleanExtra("test", false)) {
+                    ReminderScheduler.scheduleWakeSnooze(context)
+                }
             }
             "routine" -> {
                 val id = intent.getLongExtra("id", -1L)
@@ -208,5 +214,32 @@ class AlarmReceiver : BroadcastReceiver() {
         const val NOTIF_WAKE = 1
         const val NOTIF_CONFIRM = 2
         const val NOTIF_REVIEW = 3
+
+        /** Quiet prompt shown when the alarm stopped by itself or was dismissed. */
+        fun showConfirm(context: Context) {
+            ReminderScheduler.ensureChannels(context)
+            val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            val awakePi = PendingIntent.getBroadcast(
+                context, 11,
+                Intent(context, AlarmReceiver::class.java).setAction(ReminderScheduler.ACTION_AWAKE),
+                flags
+            )
+            val openPi = PendingIntent.getActivity(
+                context, 15, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+            )
+            val notification = NotificationCompat.Builder(context, ReminderScheduler.CH_CONFIRM)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setContentTitle("Are you awake?")
+                .setContentText("Tap I'm awake to confirm.")
+                .setContentIntent(openPi)
+                .setAutoCancel(true)
+                .addAction(0, "I'm awake", awakePi)
+                .build()
+            try {
+                NotificationManagerCompat.from(context).notify(NOTIF_CONFIRM, notification)
+            } catch (e: SecurityException) {
+                // notifications are not allowed
+            }
+        }
     }
 }

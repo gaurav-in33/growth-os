@@ -17,9 +17,12 @@ import java.time.ZoneId
 
 object ReminderScheduler {
 
-    const val CH_ROUTINE = "routine_v1"
+    const val CH_ROUTINE = "routine_v2"
     const val CH_CONFIRM = "confirm_v1"
-    const val CH_WAKE = "wake_alarm_v1"
+    // Channel used by the alarm service: silent here because the service plays the ringtone itself.
+    const val CH_WAKE = "wake_alarm_v2"
+    // Old channel with a sound, only used if the alarm service cannot start.
+    const val CH_WAKE_FALLBACK = "wake_alarm_v1"
     const val CH_REVIEW = "review_v1"
 
     const val ACTION_ROUTINE = "com.growthos.personal.ROUTINE"
@@ -34,6 +37,8 @@ object ReminderScheduler {
 
     private const val CODE_WAKE = 1
     private const val CODE_WAKE_SNOOZE = 2
+    private const val CODE_TEST_ALARM = 5
+    private const val CODE_TEST_REMINDER = 6
     private const val CODE_REVIEW = 4
     private const val CODE_ROUTINE_BASE = 1000
     private const val CODE_ROUTINE_SNOOZE_BASE = 3000
@@ -43,8 +48,16 @@ object ReminderScheduler {
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
 
-        val routine = NotificationChannel(CH_ROUTINE, "Routine reminders", NotificationManager.IMPORTANCE_DEFAULT)
+        val routine = NotificationChannel(CH_ROUTINE, "Routine reminders", NotificationManager.IMPORTANCE_HIGH)
         routine.description = "Reminders for your daily routine"
+        routine.enableVibration(true)
+        routine.setSound(
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+        )
         nm.createNotificationChannel(routine)
 
         val confirm = NotificationChannel(CH_CONFIRM, "Wake-up confirmation", NotificationManager.IMPORTANCE_LOW)
@@ -52,16 +65,23 @@ object ReminderScheduler {
         nm.createNotificationChannel(confirm)
 
         val wake = NotificationChannel(CH_WAKE, "Wake-up alarm", NotificationManager.IMPORTANCE_HIGH)
-        wake.description = "Your wake-up alarm"
-        wake.setSound(
+        wake.description = "Shown while your wake-up alarm rings"
+        wake.setSound(null, null)
+        wake.enableVibration(false)
+        wake.lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        nm.createNotificationChannel(wake)
+
+        val wakeFallback = NotificationChannel(CH_WAKE_FALLBACK, "Wake-up alarm (backup)", NotificationManager.IMPORTANCE_HIGH)
+        wakeFallback.description = "Backup alarm sound if the alarm screen cannot open"
+        wakeFallback.setSound(
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
             AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
         )
-        wake.enableVibration(true)
-        nm.createNotificationChannel(wake)
+        wakeFallback.enableVibration(true)
+        nm.createNotificationChannel(wakeFallback)
 
         val review = NotificationChannel(CH_REVIEW, "Evening review", NotificationManager.IMPORTANCE_DEFAULT)
         review.description = "A daily nudge to review your day"
@@ -175,6 +195,30 @@ object ReminderScheduler {
     fun cancelWakeSnooze(context: Context) {
         val am = context.getSystemService(AlarmManager::class.java)
         am.cancel(broadcast(context, CODE_WAKE_SNOOZE, receiverIntent(context, ACTION_WAKE)))
+    }
+
+    // ---------- tests (Plan > Alarm check) ----------
+
+    fun scheduleTestAlarm(context: Context, seconds: Int) {
+        ensureChannels(context)
+        val intent = receiverIntent(context, ACTION_WAKE)
+            .putExtra("snoozed", true)
+            .putExtra("test", true)
+        setAlarmClockCompat(
+            context,
+            System.currentTimeMillis() + seconds * 1000L,
+            broadcast(context, CODE_TEST_ALARM, intent)
+        )
+    }
+
+    fun scheduleTestReminder(context: Context, seconds: Int) {
+        ensureChannels(context)
+        val intent = routineIntent(context, 9999L, "Test reminder", 0, true).putExtra("test", true)
+        setExactCompat(
+            context,
+            System.currentTimeMillis() + seconds * 1000L,
+            broadcast(context, CODE_TEST_REMINDER, intent)
+        )
     }
 
     // ---------- evening review reminder ----------
