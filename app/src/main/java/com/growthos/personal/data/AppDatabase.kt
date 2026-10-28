@@ -30,9 +30,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ProjectItemEntity::class,
         ExerciseLogEntity::class,
         MeasurementEntity::class,
-        WorkoutPlanEntity::class
+        WorkoutPlanEntity::class,
+        GoalMilestoneEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,6 +44,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun waterDao(): WaterDao
     abstract fun routineDao(): RoutineDao
     abstract fun goalDao(): GoalDao
+    abstract fun goalMilestoneDao(): GoalMilestoneDao
     abstract fun wakeDao(): WakeDao
     abstract fun studyDao(): StudyDao
     abstract fun workoutDao(): WorkoutDao
@@ -128,6 +130,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `goal_milestones` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `goalId` INTEGER NOT NULL, `title` TEXT NOT NULL, `isDone` INTEGER NOT NULL)")
+                db.execSQL("ALTER TABLE `goals` ADD COLUMN `deadlineEpochDay` INTEGER")
+                db.execSQL("ALTER TABLE `goals` ADD COLUMN `completedEpochDay` INTEGER")
+                // goals that were already at 100% count as completed (today, in UTC days)
+                db.execSQL("UPDATE `goals` SET `completedEpochDay` = CAST(strftime('%s', 'now') / 86400 AS INTEGER) WHERE `progress` >= 100")
+            }
+        }
+
         fun get(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -135,7 +147,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "growth_os.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .build()
                     .also { instance = it }
             }

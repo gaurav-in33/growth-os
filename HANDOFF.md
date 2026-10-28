@@ -5,7 +5,7 @@ Give code as a zip of only the changed files. Never ask me for passwords/keys in
 
 ## Project
 Growth OS = private native Android app (Kotlin, Jetpack Compose, Room), package com.growthos.personal, repo github.com/gaurav-in33/growth-os (public).
-Current version: v1.7.0 (C built, not yet verified on phone; A and B verified), DB v8. Everything below is built, green and working on my phone:
+Current version: v1.8.0 (D built, not yet verified on phone; A B C verified), DB v9. Everything below is built, green and working on my phone:
 glass design (Today, Plan, Track, Grow, More), liquid nav, real wake alarm (AlarmService + AlarmActivity + Alarm check/Test buttons), routine reminders, habits+streaks, goals, study/coding logs, projects (progress only), fitness logs, sleep/mood/energy, finance, notes, score+XP+level, daily review, weekly report, backup/restore, theme choice.
 
 ## How updates work (do not change)
@@ -32,7 +32,7 @@ Block headers Morning/Afternoon/Evening/Bedtime in the timeline. Templates dialo
 ### C. Learning + fitness - DONE v1.7.0 (data/LearnFitnessData.kt; Learn = Courses|Roadmap|Log; Fitness = Log|Lifts|Plan|Body; Projects milestones auto progress; sleep bedtime/wake/quality in CheckinCard)
 Tables: courses(id,name,deadlineEpochDay?,isArchived), topics(id,courseId,name,status 0/1/2,weak), skills(id,name,status,position), project_items(id,projectId,parentId default 0,title,isDone) for milestones and subtasks (project progress auto from milestones), exercise_logs(id,epochDay,exercise,sets,reps,weightKg), measurements(id,epochDay,kind,value), workout_plan(dayOfWeek PK,name). Rest day = WorkoutLog type "Rest", 0 min.
 UI: Learn = courses with deadline pill, topics (tap cycles status, star = weak) + "Review weak areas" card + skill roadmap; Projects = milestones with subtasks; Fitness = planner (week list), sets x reps @ kg log, body measurements; Health sleep = bedtime + wake time pickers + quality 1-5 (DayCheckin new columns bedtimeMinute default -1, wakeMinute default -1, sleepQuality default 0; sleepMinutes computed).
-### D. Goals
+### D. Goals - DONE v1.8.0 (Goal.kt has GoalRules, goal_milestones; GoalsSection in GrowScreen.kt; completed goals = completedEpochDay set at 100%)
 Tables goal_milestones(id,goalId,title,isDone); GoalEntity new columns deadlineEpochDay Long?, completedEpochDay Long?. Progress auto from milestones when they exist else +-10. "Behind schedule" advice when progress is 15%+ below the linear plan to the deadline. Completed goals history section.
 ### E. Onboarding
 Steps: name -> pick goals (chips + custom, creates Weekly/Long-term goals) -> review default routine (seed routine in MainActivity, not only in Plan) -> explain reminders + button Allow notifications. All skippable.
