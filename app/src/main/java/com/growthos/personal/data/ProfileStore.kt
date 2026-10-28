@@ -18,4 +18,8 @@ class ProfileStore(context: Context) {
     fun setOnboardingDone() {
         prefs.edit().putBoolean("onboarding_done", true).apply()
     }
+
+    fun clearAll() {
+        prefs.edit().clear().apply()
+    }
 }

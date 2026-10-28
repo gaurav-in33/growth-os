@@ -49,4 +49,8 @@ class SettingsStore(context: Context) {
     fun setRoutineSeeded() {
         prefs.edit().putBoolean("routine_seeded", true).apply()
     }
+
+    fun clearAll() {
+        prefs.edit().clear().apply()
+    }
 }
