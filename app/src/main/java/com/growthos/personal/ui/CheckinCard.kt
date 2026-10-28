@@ -1,6 +1,8 @@
 package com.growthos.personal.ui
 
+import android.app.TimePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.growthos.personal.data.AppDatabase
 import com.growthos.personal.data.DayCheckin
+import com.growthos.personal.reminders.formatMinute
 import java.time.LocalDate
 import kotlinx.coroutines.launch
 
@@ -87,41 +90,112 @@ fun CheckinCard(compact: Boolean = true) {
                 scope.launch { dao.upsert(current.copy(energy = if (current.energy == v) 0 else v)) }
             }
             if (!compact) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val bed = current.bedtimeMinute
+                val wake = current.wakeMinute
+                fun minutesBetween(b: Int, w: Int, fallback: Int): Int =
+                    if (b >= 0 && w >= 0) (w - b + 1440) % 1440 else fallback
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         text = "Sleep",
                         color = c.textSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        SoftButton(text = "-30m", onClick = {
-                            val s = current.sleepMinutes
-                            scope.launch {
-                                dao.upsert(current.copy(sleepMinutes = if (s <= 30) 0 else s - 30))
-                            }
-                        })
-                        Text(
-                            text = formatSleepMinutes(current.sleepMinutes),
-                            color = c.textPrimary,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
-                        )
-                        SoftButton(text = "+30m", onClick = {
-                            val s = current.sleepMinutes
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        TimeButton(
+                            label = "Bedtime",
+                            minute = bed,
+                            defaultMinute = 23 * 60,
+                            modifier = Modifier.weight(1f)
+                        ) { m ->
                             scope.launch {
                                 dao.upsert(
-                                    current.copy(sleepMinutes = if (s == 0) 420 else minOf(s + 30, 960))
+                                    current.copy(
+                                        bedtimeMinute = m,
+                                        sleepMinutes = minutesBetween(m, wake, current.sleepMinutes)
+                                    )
                                 )
                             }
-                        })
+                        }
+                        TimeButton(
+                            label = "Wake up",
+                            minute = wake,
+                            defaultMinute = 6 * 60,
+                            modifier = Modifier.weight(1f)
+                        ) { m ->
+                            scope.launch {
+                                dao.upsert(
+                                    current.copy(
+                                        wakeMinute = m,
+                                        sleepMinutes = minutesBetween(bed, m, current.sleepMinutes)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = if (current.sleepMinutes > 0) "Slept " + formatSleepMinutes(current.sleepMinutes)
+                        else "Set bedtime and wake time",
+                        color = c.textPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    RatingRow("Sleep quality", current.sleepQuality) { v ->
+                        scope.launch { dao.upsert(current.copy(sleepQuality = if (current.sleepQuality == v) 0 else v)) }
+                    }
+                    if (current.sleepMinutes > 0 || bed >= 0 || wake >= 0) {
+                        Text(
+                            text = "Clear sleep",
+                            color = c.accent,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickNoRipple {
+                                scope.launch {
+                                    dao.upsert(
+                                        current.copy(bedtimeMinute = -1, wakeMinute = -1, sleepMinutes = 0, sleepQuality = 0)
+                                    )
+                                }
+                            }
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TimeButton(
+    label: String,
+    minute: Int,
+    defaultMinute: Int,
+    modifier: Modifier = Modifier,
+    onPick: (Int) -> Unit
+) {
+    val c = Growth.colors
+    val context = LocalContext.current
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(c.track)
+            .clickNoRipple {
+                val start = if (minute >= 0) minute else defaultMinute
+                TimePickerDialog(
+                    context,
+                    { _, hour, min -> onPick(hour * 60 + min) },
+                    start / 60,
+                    start % 60,
+                    false
+                ).show()
+            }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(text = label, color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = if (minute >= 0) formatMinute(minute) else "Set",
+            color = if (minute >= 0) c.textPrimary else c.accent,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

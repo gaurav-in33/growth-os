@@ -20,26 +20,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.growthos.personal.data.AppDatabase
 import com.growthos.personal.data.ProjectEntity
+import com.growthos.personal.data.ProjectItemEntity
+import com.growthos.personal.data.ProjectRules
 import java.time.LocalDate
 import kotlinx.coroutines.launch
 
-/** Grow > Projects. */
+/** Grow > Projects. Progress comes from milestones when a project has any. */
 @Composable
 fun ProjectsSection() {
     val c = Growth.colors
     val context = LocalContext.current
     val dao = remember { AppDatabase.get(context).projectDao() }
+    val itemDao = remember { AppDatabase.get(context).projectItemDao() }
     val flow = remember(dao) { dao.observeActive() }
+    val itemFlow = remember(itemDao) { itemDao.observeAll() }
     val projects by flow.collectAsState(initial = emptyList())
+    val allItems by itemFlow.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val today = remember { LocalDate.now().toEpochDay() }
 
     var showAdd by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ProjectEntity?>(null) }
+    var addMilestoneFor by remember { mutableStateOf<ProjectEntity?>(null) }
+    var addSubtaskFor by remember { mutableStateOf<ProjectItemEntity?>(null) }
+    var renamingItem by remember { mutableStateOf<ProjectItemEntity?>(null) }
 
     Column(
         modifier = Modifier
@@ -54,43 +63,120 @@ fun ProjectsSection() {
             }
         }
         projects.forEach { project ->
+            val mine = allItems.filter { it.projectId == project.id }
+            val milestones = mine.filter { it.parentId == 0L }
+            val auto = milestones.isNotEmpty()
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    RingProgress(progress = project.progress / 100f, diameter = 60.dp, stroke = 6.dp) {
-                        Text(
-                            text = "${project.progress}%",
-                            color = c.textPrimary,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.ExtraBold
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        RingProgress(progress = project.progress / 100f, diameter = 60.dp, stroke = 6.dp) {
+                            Text(
+                                text = "${project.progress}%",
+                                color = c.textPrimary,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = project.name,
+                                color = c.textPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            val state = if (project.progress >= 100) "Completed" else "In progress"
+                            Text(
+                                text = if (auto) state + " · " + milestones.count { it.isDone } + "/" +
+                                    milestones.size + " milestones" else state,
+                                color = c.textSecondary,
+                                fontSize = 12.5.sp
+                            )
+                        }
+                        if (!auto) {
+                            StepButton("−") {
+                                scope.launch { dao.setProgress(project.id, (project.progress - 10).coerceAtLeast(0)) }
+                            }
+                            StepButton("+") {
+                                scope.launch { dao.setProgress(project.id, (project.progress + 10).coerceAtMost(100)) }
+                            }
+                        }
+                        MoreMenu(
+                            listOf(
+                                "Edit" to { editing = project },
+                                "Add milestone" to { addMilestoneFor = project },
+                                "Archive" to { scope.launch { dao.archive(project.id) } }
+                            )
                         )
                     }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = project.name,
-                            color = c.textPrimary,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = if (project.progress >= 100) "Completed" else "In progress",
-                            color = c.textSecondary,
-                            fontSize = 12.5.sp
-                        )
+
+                    milestones.forEach { milestone ->
+                        val subs = mine.filter { it.parentId == milestone.id }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CheckDot(
+                                checked = milestone.isDone,
+                                onClick = { scope.launch { ProjectRules.toggleMilestone(context, milestone) } }
+                            )
+                            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                                Text(
+                                    text = milestone.title,
+                                    color = if (milestone.isDone) c.textTertiary else c.textPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textDecoration = if (milestone.isDone) TextDecoration.LineThrough else null
+                                )
+                                if (subs.isNotEmpty()) {
+                                    Text(
+                                        text = "${subs.count { it.isDone }}/${subs.size} subtasks",
+                                        color = c.textSecondary,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                            MoreMenu(
+                                listOf(
+                                    "Add subtask" to { addSubtaskFor = milestone },
+                                    "Rename" to { renamingItem = milestone },
+                                    "Delete" to { scope.launch { ProjectRules.delete(context, milestone) } }
+                                )
+                            )
+                        }
+                        subs.forEach { sub ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(start = 30.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CheckDot(
+                                    checked = sub.isDone,
+                                    onClick = { scope.launch { ProjectRules.toggleSubtask(context, sub) } }
+                                )
+                                Text(
+                                    text = sub.title,
+                                    color = if (sub.isDone) c.textTertiary else c.textPrimary,
+                                    fontSize = 14.sp,
+                                    textDecoration = if (sub.isDone) TextDecoration.LineThrough else null,
+                                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                                )
+                                MoreMenu(
+                                    listOf(
+                                        "Rename" to { renamingItem = sub },
+                                        "Delete" to { scope.launch { ProjectRules.delete(context, sub) } }
+                                    )
+                                )
+                            }
+                        }
                     }
-                    StepButton("−") {
-                        scope.launch { dao.setProgress(project.id, (project.progress - 10).coerceAtLeast(0)) }
-                    }
-                    StepButton("+") {
-                        scope.launch { dao.setProgress(project.id, (project.progress + 10).coerceAtMost(100)) }
-                    }
-                    MoreMenu(
-                        listOf(
-                            "Edit" to { editing = project },
-                            "Archive" to { scope.launch { dao.archive(project.id) } }
-                        )
+                    Text(
+                        text = "+ Add milestone",
+                        color = c.accent,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp).clickNoRipple { addMilestoneFor = project }
                     )
                 }
             }
@@ -124,6 +210,48 @@ fun ProjectsSection() {
                 editing = null
             },
             onDismiss = { editing = null }
+        )
+    }
+
+    val milestoneProject = addMilestoneFor
+    if (milestoneProject != null) {
+        TextEditDialog(
+            heading = "New milestone",
+            initial = "",
+            maxLength = 80,
+            onSave = { title ->
+                scope.launch { ProjectRules.addMilestone(context, milestoneProject.id, title) }
+                addMilestoneFor = null
+            },
+            onDismiss = { addMilestoneFor = null }
+        )
+    }
+
+    val subtaskParent = addSubtaskFor
+    if (subtaskParent != null) {
+        TextEditDialog(
+            heading = "New subtask",
+            initial = "",
+            maxLength = 80,
+            onSave = { title ->
+                scope.launch { ProjectRules.addSubtask(context, subtaskParent, title) }
+                addSubtaskFor = null
+            },
+            onDismiss = { addSubtaskFor = null }
+        )
+    }
+
+    val itemBeingRenamed = renamingItem
+    if (itemBeingRenamed != null) {
+        TextEditDialog(
+            heading = "Rename",
+            initial = itemBeingRenamed.title,
+            maxLength = 80,
+            onSave = { title ->
+                scope.launch { itemDao.rename(itemBeingRenamed.id, title) }
+                renamingItem = null
+            },
+            onDismiss = { renamingItem = null }
         )
     }
 }

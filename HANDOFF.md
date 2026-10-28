@@ -5,7 +5,7 @@ Give code as a zip of only the changed files. Never ask me for passwords/keys in
 
 ## Project
 Growth OS = private native Android app (Kotlin, Jetpack Compose, Room), package com.growthos.personal, repo github.com/gaurav-in33/growth-os (public).
-Current version: v1.6.0 (B built, not yet verified on phone; A verified in v1.5.0), DB v7. Everything below is built, green and working on my phone:
+Current version: v1.7.0 (C built, not yet verified on phone; A and B verified), DB v8. Everything below is built, green and working on my phone:
 glass design (Today, Plan, Track, Grow, More), liquid nav, real wake alarm (AlarmService + AlarmActivity + Alarm check/Test buttons), routine reminders, habits+streaks, goals, study/coding logs, projects (progress only), fitness logs, sleep/mood/energy, finance, notes, score+XP+level, daily review, weekly report, backup/restore, theme choice.
 
 ## How updates work (do not change)
@@ -29,7 +29,7 @@ Also update DayStats (score uses today's tasks) and DailyReviewCard.
 ### B. Routine - DONE v1.6.0 (DB v7; data/RoutineTemplates.kt, routine_checks in RoutineItem.kt, pausedDay in SettingsStore, score weights tasks20 habits20 routine15 focus15 water10 study10 workout10). Next: C
 Table routine_checks(routineId, epochDay) PK both: tick each routine item per day (CheckDot in Plan timeline), Today hero "Routine x/y" uses ticks, score gets a Routine part (tasks 20, habits 20, routine 15, focus 15, water 10, study 10, workout 10).
 Block headers Morning/Afternoon/Evening/Bedtime in the timeline. Templates dialog (My day / Light day / Workout day): Add or Replace (confirm). "Pause routine today" banner (SettingsStore pausedDay): no routine reminders, ignored in score.
-### C. Learning + fitness
+### C. Learning + fitness - DONE v1.7.0 (data/LearnFitnessData.kt; Learn = Courses|Roadmap|Log; Fitness = Log|Lifts|Plan|Body; Projects milestones auto progress; sleep bedtime/wake/quality in CheckinCard)
 Tables: courses(id,name,deadlineEpochDay?,isArchived), topics(id,courseId,name,status 0/1/2,weak), skills(id,name,status,position), project_items(id,projectId,parentId default 0,title,isDone) for milestones and subtasks (project progress auto from milestones), exercise_logs(id,epochDay,exercise,sets,reps,weightKg), measurements(id,epochDay,kind,value), workout_plan(dayOfWeek PK,name). Rest day = WorkoutLog type "Rest", 0 min.
 UI: Learn = courses with deadline pill, topics (tap cycles status, star = weak) + "Review weak areas" card + skill roadmap; Projects = milestones with subtasks; Fitness = planner (week list), sets x reps @ kg log, body measurements; Health sleep = bedtime + wake time pickers + quality 1-5 (DayCheckin new columns bedtimeMinute default -1, wakeMinute default -1, sleepQuality default 0; sleepMinutes computed).
 ### D. Goals

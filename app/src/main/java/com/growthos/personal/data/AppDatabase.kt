@@ -23,9 +23,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DayCheckin::class,
         FinanceEntryEntity::class,
         NoteEntity::class,
-        RoutineCheck::class
+        RoutineCheck::class,
+        CourseEntity::class,
+        TopicEntity::class,
+        SkillEntity::class,
+        ProjectItemEntity::class,
+        ExerciseLogEntity::class,
+        MeasurementEntity::class,
+        WorkoutPlanEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,6 +50,11 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun checkinDao(): CheckinDao
     abstract fun financeDao(): FinanceDao
     abstract fun noteDao(): NoteDao
+    abstract fun learnDao(): LearnDao
+    abstract fun projectItemDao(): ProjectItemDao
+    abstract fun exerciseDao(): ExerciseDao
+    abstract fun measurementDao(): MeasurementDao
+    abstract fun workoutPlanDao(): WorkoutPlanDao
 
     companion object {
         @Volatile
@@ -101,6 +113,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `courses` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `deadlineEpochDay` INTEGER, `isArchived` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `topics` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `courseId` INTEGER NOT NULL, `name` TEXT NOT NULL, `status` INTEGER NOT NULL, `weak` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `skills` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `status` INTEGER NOT NULL, `position` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `project_items` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `projectId` INTEGER NOT NULL, `parentId` INTEGER NOT NULL DEFAULT 0, `title` TEXT NOT NULL, `isDone` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `exercise_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `epochDay` INTEGER NOT NULL, `exercise` TEXT NOT NULL, `sets` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `weightKg` REAL NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `measurements` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `epochDay` INTEGER NOT NULL, `kind` TEXT NOT NULL, `value` REAL NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `workout_plan` (`dayOfWeek` INTEGER NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`dayOfWeek`))")
+                db.execSQL("ALTER TABLE `day_checkins` ADD COLUMN `bedtimeMinute` INTEGER NOT NULL DEFAULT -1")
+                db.execSQL("ALTER TABLE `day_checkins` ADD COLUMN `wakeMinute` INTEGER NOT NULL DEFAULT -1")
+                db.execSQL("ALTER TABLE `day_checkins` ADD COLUMN `sleepQuality` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun get(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -108,7 +135,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "growth_os.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                     .also { instance = it }
             }

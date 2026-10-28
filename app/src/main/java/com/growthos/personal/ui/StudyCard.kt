@@ -1,6 +1,7 @@
 package com.growthos.personal.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,6 +43,23 @@ private fun hoursMinutes(total: Int): String =
 /** Grow > Learn. */
 @Composable
 fun LearnSection() {
+    var pane by rememberSaveable { mutableIntStateOf(0) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
+            Segmented(listOf("Courses", "Roadmap", "Log"), pane, { pane = it })
+        }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when (pane) {
+                0 -> CoursesPane()
+                1 -> RoadmapPane()
+                else -> StudyLogPane()
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudyLogPane() {
     val c = Growth.colors
     val context = LocalContext.current
     val dao = remember { AppDatabase.get(context).studyDao() }

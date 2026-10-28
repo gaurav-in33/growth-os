@@ -1,5 +1,6 @@
 package com.growthos.personal.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Insert
@@ -81,7 +82,12 @@ data class DayCheckin(
     @PrimaryKey val epochDay: Long,
     val mood: Int,
     val energy: Int,
-    val sleepMinutes: Int
+    val sleepMinutes: Int,
+    // minute of day, -1 = not set
+    @ColumnInfo(defaultValue = "-1") val bedtimeMinute: Int = -1,
+    @ColumnInfo(defaultValue = "-1") val wakeMinute: Int = -1,
+    // 1 to 5, 0 = not set
+    @ColumnInfo(defaultValue = "0") val sleepQuality: Int = 0
 )
 
 @Dao

@@ -1,6 +1,7 @@
 package com.growthos.personal.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,6 +40,24 @@ private val WORKOUT_TYPES = listOf("Walk", "Gym", "Run", "Other")
 /** Track > Fitness. */
 @Composable
 fun FitnessSection() {
+    var pane by rememberSaveable { mutableIntStateOf(0) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
+            Segmented(listOf("Log", "Lifts", "Plan", "Body"), pane, { pane = it })
+        }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when (pane) {
+                0 -> WorkoutLogPane()
+                1 -> LiftsPane()
+                2 -> PlanPane()
+                else -> BodyPane()
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkoutLogPane() {
     val c = Growth.colors
     val context = LocalContext.current
     val dao = remember { AppDatabase.get(context).workoutDao() }
@@ -46,6 +66,10 @@ fun FitnessSection() {
     val logs by flow.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val letters = remember { weekLetters() }
+    val planFlow = remember(context) { AppDatabase.get(context).workoutPlanDao().observeAll() }
+    val plan by planFlow.collectAsState(initial = emptyList())
+    val todayPlan = plan.firstOrNull { it.dayOfWeek == LocalDate.now().dayOfWeek.value }?.name
+    val restLogged = logs.any { it.epochDay == today && it.type == "Rest" }
 
     var type by rememberSaveable { mutableStateOf("Walk") }
     var minutes by rememberSaveable { mutableStateOf("") }
@@ -65,6 +89,20 @@ fun FitnessSection() {
             .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (todayPlan != null) {
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TileLabel("Today's plan")
+                    Text(
+                        text = todayPlan,
+                        color = c.textPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatTile(label = "Active days", value = "$activeDays", unit = "/ 7", modifier = Modifier.weight(1f))
             StatTile(label = "This week", value = "$weekMinutes", unit = "min", modifier = Modifier.weight(1f))
@@ -102,7 +140,9 @@ fun FitnessSection() {
                     },
                     colors = glassFieldColors()
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GlowButton(
+                    modifier = Modifier.weight(1f),
                     text = "Log workout",
                     onClick = {
                         val m = minutes.toIntOrNull()
@@ -117,6 +157,17 @@ fun FitnessSection() {
                         }
                     }
                 )
+                SoftButton(
+                    text = if (restLogged) "Rest logged" else "Rest day",
+                    onClick = {
+                        if (!restLogged) {
+                            scope.launch {
+                                dao.insert(WorkoutLogEntity(epochDay = today, type = "Rest", minutes = 0))
+                            }
+                        }
+                    }
+                )
+                }
             }
         }
 
@@ -147,7 +198,7 @@ fun FitnessSection() {
                                 )
                             }
                             Text(
-                                text = "${log.minutes} min",
+                                text = if (log.type == "Rest") "Rest" else "${log.minutes} min",
                                 color = c.textSecondary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
