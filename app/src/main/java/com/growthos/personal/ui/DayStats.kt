@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.growthos.personal.data.AppDatabase
+import com.growthos.personal.data.SettingsStore
 import com.growthos.personal.data.TaskRules
 import java.time.LocalDate
 import java.time.ZoneId
@@ -25,7 +26,10 @@ class DayStats(
     val habitsDone: Int,
     val habitsTotal: Int,
     val focusMin: Int,
-    val glasses: Int
+    val glasses: Int,
+    val routineDone: Int,
+    val routineTotal: Int,
+    val routinePaused: Boolean
 )
 
 private fun points(ratio: Double, max: Int): Int =
@@ -39,7 +43,7 @@ private fun levelFor(xp: Int): Int {
 
 /**
  * Today's score and XP, calculated only from what the user recorded.
- * Same rules as before: tasks 25, habits 25, focus 20, water 10, study 10, workout 10.
+ * Weights: tasks 20, habits 20, routine 15, focus 15, water 10, study 10, workout 10.
  */
 @Composable
 fun rememberDayStats(): DayStats {
@@ -58,6 +62,8 @@ fun rememberDayStats(): DayStats {
     val waterFlow = remember(db) { db.waterDao().observe(today) }
     val studyFlow = remember(db) { db.studyDao().observeSince(0L) }
     val workoutFlow = remember(db) { db.workoutDao().observeSince(0L) }
+    val routineFlow = remember(db) { db.routineDao().observeAll() }
+    val routineCheckFlow = remember(db) { db.routineDao().observeCheckedIds(today) }
 
     val tasks by tasksFlow.collectAsState(initial = emptyList())
     val habits by habitsFlow.collectAsState(initial = emptyList())
@@ -67,6 +73,10 @@ fun rememberDayStats(): DayStats {
     val water by waterFlow.collectAsState(initial = null)
     val studyLogs by studyFlow.collectAsState(initial = emptyList())
     val workoutLogs by workoutFlow.collectAsState(initial = emptyList())
+    val routineItems by routineFlow.collectAsState(initial = emptyList())
+    val routineChecked by routineCheckFlow.collectAsState(initial = emptyList())
+    val routinePaused = SettingsStore(context).pausedDay() == today
+    val routineDone = routineItems.count { it.id in routineChecked }
 
     val todayTasks = TaskRules.todayTasks(tasks, today)
     val todayDone = todayTasks.count { it.isDone }
@@ -78,12 +88,15 @@ fun rememberDayStats(): DayStats {
 
     val parts = mutableListOf<StatPart>()
     if (todayTasks.isNotEmpty()) {
-        parts.add(StatPart("Tasks", points(todayDone.toDouble() / todayTasks.size, 25), 25))
+        parts.add(StatPart("Tasks", points(todayDone.toDouble() / todayTasks.size, 20), 20))
     }
     if (habits.isNotEmpty()) {
-        parts.add(StatPart("Habits", points(habitsDone.toDouble() / habits.size, 25), 25))
+        parts.add(StatPart("Habits", points(habitsDone.toDouble() / habits.size, 20), 20))
     }
-    parts.add(StatPart("Focus", points(focusToday / 50.0, 20), 20))
+    if (routineItems.isNotEmpty() && !routinePaused) {
+        parts.add(StatPart("Routine", points(routineDone.toDouble() / routineItems.size, 15), 15))
+    }
+    parts.add(StatPart("Focus", points(focusToday / 50.0, 15), 15))
     parts.add(StatPart("Water", points(glasses / 8.0, 10), 10))
     parts.add(StatPart("Study and coding", points(studyMin / 60.0, 10), 10))
     parts.add(StatPart("Workout", points(workoutMin / 20.0, 10), 10))
@@ -111,6 +124,9 @@ fun rememberDayStats(): DayStats {
         habitsDone = habitsDone,
         habitsTotal = habits.size,
         focusMin = focusToday,
-        glasses = glasses
+        glasses = glasses,
+        routineDone = routineDone,
+        routineTotal = routineItems.size,
+        routinePaused = routinePaused
     )
 }

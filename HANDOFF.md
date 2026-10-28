@@ -5,7 +5,7 @@ Give code as a zip of only the changed files. Never ask me for passwords/keys in
 
 ## Project
 Growth OS = private native Android app (Kotlin, Jetpack Compose, Room), package com.growthos.personal, repo github.com/gaurav-in33/growth-os (public).
-Current version: v1.5.0 (A built, not yet verified on phone), DB v6. Last verified: v1.4.1. Everything below is built, green and working on my phone:
+Current version: v1.6.0 (B built, not yet verified on phone; A verified in v1.5.0), DB v7. Everything below is built, green and working on my phone:
 glass design (Today, Plan, Track, Grow, More), liquid nav, real wake alarm (AlarmService + AlarmActivity + Alarm check/Test buttons), routine reminders, habits+streaks, goals, study/coding logs, projects (progress only), fitness logs, sleep/mood/energy, finance, notes, score+XP+level, daily review, weekly report, backup/restore, theme choice.
 
 ## How updates work (do not change)
@@ -26,7 +26,7 @@ Rules: overdue = !isDone && due < today. Recurring task: when done set completed
 UI: Plan becomes a hub Segmented [Routine | Tasks | Calendar]. Tasks tab sections Overdue/Today/Upcoming/No date/Completed; task editor dialog (title, date via android.app.DatePickerDialog, time via TimePickerDialog, priority, duration, category, energy, repeat, reminder switch); calendar = month grid with dots, tap a day to list its tasks. Today tasks card sorted by priority/deadline with a short reason ("Overdue", "Due 3:00 PM", "High priority").
 Reminders: ReminderScheduler.scheduleTask/cancelTask, receiver actions Mark complete / Snooze 5 min / Open, respect quiet hours and the 10-12 protected block, reschedule in rescheduleAll and after boot.
 Also update DayStats (score uses today's tasks) and DailyReviewCard.
-### B. Routine
+### B. Routine - DONE v1.6.0 (DB v7; data/RoutineTemplates.kt, routine_checks in RoutineItem.kt, pausedDay in SettingsStore, score weights tasks20 habits20 routine15 focus15 water10 study10 workout10). Next: C
 Table routine_checks(routineId, epochDay) PK both: tick each routine item per day (CheckDot in Plan timeline), Today hero "Routine x/y" uses ticks, score gets a Routine part (tasks 20, habits 20, routine 15, focus 15, water 10, study 10, workout 10).
 Block headers Morning/Afternoon/Evening/Bedtime in the timeline. Templates dialog (My day / Light day / Workout day): Add or Replace (confirm). "Pause routine today" banner (SettingsStore pausedDay): no routine reminders, ignored in score.
 ### C. Learning + fitness

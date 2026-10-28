@@ -257,8 +257,8 @@ private fun HeroCard(onOpenPlan: () -> Unit) {
         val t = LocalTime.now()
         t.hour * 60 + t.minute
     }
-    val next = routine.firstOrNull { it.startMinute > nowMin }
-    val passed = routine.count { it.startMinute <= nowMin }
+    val next = if (stats.routinePaused) null else routine.firstOrNull { it.startMinute > nowMin }
+    val ticked = stats.routineDone
 
     GlassCard(
         modifier = Modifier.fillMaxWidth().clickNoRipple(onOpenPlan),
@@ -289,6 +289,7 @@ private fun HeroCard(onOpenPlan: () -> Unit) {
                 )
                 Text(
                     text = when {
+                        stats.routinePaused -> "Routine paused today"
                         next != null -> next.title
                         routine.isEmpty() -> "Add your routine"
                         else -> "All done for today"
@@ -311,7 +312,7 @@ private fun HeroCard(onOpenPlan: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         TagPill("in " + untilText(next.startMinute - nowMin))
-                        TagPill("Routine $passed/${routine.size}")
+                        TagPill("Routine $ticked/${routine.size}")
                     }
                 }
             }

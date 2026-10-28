@@ -41,6 +41,8 @@ fun DailyReviewCard() {
     val studyFlow = remember(db) { db.studyDao().observeSince(today) }
     val workoutFlow = remember(db) { db.workoutDao().observeSince(today) }
     val financeFlow = remember(db) { db.financeDao().observeBetween(today, today) }
+    val routineFlow = remember(db) { db.routineDao().observeAll() }
+    val routineCheckFlow = remember(db) { db.routineDao().observeCheckedIds(today) }
 
     val tasks by tasksFlow.collectAsState(initial = emptyList())
     val habits by habitsFlow.collectAsState(initial = emptyList())
@@ -52,6 +54,9 @@ fun DailyReviewCard() {
     val studyLogs by studyFlow.collectAsState(initial = emptyList())
     val workoutLogs by workoutFlow.collectAsState(initial = emptyList())
     val financeToday by financeFlow.collectAsState(initial = emptyList())
+    val routineItems by routineFlow.collectAsState(initial = emptyList())
+    val routineChecked by routineCheckFlow.collectAsState(initial = emptyList())
+    val routinePaused = settings.pausedDay() == today
 
     val todayTasks = TaskRules.todayTasks(tasks, today)
     val openTasks = todayTasks.filter { !it.isDone }
@@ -82,6 +87,12 @@ fun DailyReviewCard() {
             }
             Text(
                 text = "Habits: $habitsDone of ${habits.size} ticked today",
+                color = c.textPrimary,
+                fontSize = 15.sp
+            )
+            Text(
+                text = if (routinePaused) "Routine: paused today"
+                else "Routine: ${routineItems.count { it.id in routineChecked }} of ${routineItems.size} ticked",
                 color = c.textPrimary,
                 fontSize = 15.sp
             )

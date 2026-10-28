@@ -37,6 +37,13 @@ class SettingsStore(context: Context) {
         prefs.edit().putInt("review_minute", value).apply()
     }
 
+    // epoch day on which the routine is paused (-1 = never)
+    fun pausedDay(): Long = prefs.getLong("paused_day", -1L)
+
+    fun setPausedDay(value: Long) {
+        prefs.edit().putLong("paused_day", value).apply()
+    }
+
     fun routineSeeded(): Boolean = prefs.getBoolean("routine_seeded", false)
 
     fun setRoutineSeeded() {

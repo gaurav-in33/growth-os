@@ -136,6 +136,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val now = LocalTime.now()
         val nowMinute = now.hour * 60 + now.minute
         if (!test && NotificationRules.reason(nowMinute) != null) return
+        if (!test && SettingsStore(context).pausedDay() == LocalDate.now().toEpochDay()) return
 
         val snoozeIntent = Intent(context, AlarmReceiver::class.java)
             .setAction(ReminderScheduler.ACTION_SNOOZE)

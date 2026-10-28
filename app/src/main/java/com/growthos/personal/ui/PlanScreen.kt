@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -56,32 +57,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.growthos.personal.data.AppDatabase
+import com.growthos.personal.data.RoutineCheck
 import com.growthos.personal.data.RoutineItemEntity
+import com.growthos.personal.data.RoutineTemplate
+import com.growthos.personal.data.RoutineTemplates
+import com.growthos.personal.data.routineBlock
+import java.time.LocalDate
 import com.growthos.personal.data.SettingsStore
 import com.growthos.personal.reminders.NotificationRules
 import com.growthos.personal.reminders.ReminderScheduler
 import com.growthos.personal.reminders.formatMinute
 import java.time.LocalTime
 import kotlinx.coroutines.launch
-
-private val DEFAULT_ROUTINE = listOf(
-    315 to "Get ready and go running",
-    420 to "Brush teeth and bring milk",
-    450 to "Coding and breakfast (finish before 10:00 AM)",
-    600 to "Computer class",
-    720 to "Return home, self-improvement time",
-    780 to "Lunch and milk",
-    810 to "Coding session",
-    960 to "Outdoor time or walk",
-    1140 to "Coding session",
-    1305 to "Dinner (by 10:00 PM)",
-    1320 to "Wind-down and prepare for sleep",
-    1380 to "Target bedtime"
-)
 
 @Composable
 fun RoutineSection() {
@@ -92,6 +84,12 @@ fun RoutineSection() {
     val itemsFlow = remember(dao) { dao.observeAll() }
     val items by itemsFlow.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
+    val today = remember { LocalDate.now().toEpochDay() }
+    val checkedFlow = remember(dao) { dao.observeCheckedIds(today) }
+    val checkedIds by checkedFlow.collectAsState(initial = emptyList())
+    var paused by remember { mutableStateOf(settings.pausedDay() == today) }
+    var showTemplates by remember { mutableStateOf(false) }
+    var confirmReplace by remember { mutableStateOf<RoutineTemplate?>(null) }
 
     var wakeEnabled by remember { mutableStateOf(settings.wakeEnabled()) }
     var wakeMinute by remember { mutableIntStateOf(settings.wakeMinute()) }
@@ -109,7 +107,7 @@ fun RoutineSection() {
 
     LaunchedEffect(Unit) {
         if (!settings.routineSeeded() && dao.count() == 0) {
-            dao.insertAll(DEFAULT_ROUTINE.map { RoutineItemEntity(title = it.second, startMinute = it.first) })
+            dao.insertAll(RoutineTemplates.MY_DAY.map { RoutineItemEntity(title = it.second, startMinute = it.first) })
         }
         settings.setRoutineSeeded()
     }
@@ -285,8 +283,68 @@ fun RoutineSection() {
         AddButton(onClick = { showAdd = true }, diameter = 40.dp)
         }
 
+        if (paused) {
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Routine paused today",
+                            color = c.textPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "No routine reminders, not counted in score",
+                            color = c.textSecondary,
+                            fontSize = 12.5.sp
+                        )
+                    }
+                    SoftButton(text = "Resume", onClick = {
+                        paused = false
+                        settings.setPausedDay(-1L)
+                    })
+                }
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(horizontal = 2.dp)
+        ) {
+            TagPill("${items.count { it.id in checkedIds }}/${items.size} done")
+            Text(
+                text = "Templates",
+                color = c.accent,
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickNoRipple { showTemplates = true }
+            )
+            if (!paused) {
+                Text(
+                    text = "Pause today",
+                    color = c.textSecondary,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickNoRipple {
+                        paused = true
+                        settings.setPausedDay(today)
+                    }
+                )
+            }
+        }
+
         Column {
             items.forEachIndexed { index, item ->
+                val block = routineBlock(item.startMinute)
+                if (index == 0 || block != routineBlock(items[index - 1].startMinute)) {
+                    BlockHeader(
+                        label = block,
+                        isFirst = index == 0,
+                        passed = item.startMinute <= nowMin
+                    )
+                }
+                val ticked = item.id in checkedIds
                 val reason = NotificationRules.reason(item.startMinute)
                 val status = when {
                     item.startMinute > nowMin -> 2
@@ -296,15 +354,25 @@ fun RoutineSection() {
                 TimelineRow(
                     timeText = formatMinute(item.startMinute),
                     status = status,
-                    isFirst = index == 0,
+                    isFirst = false,
                     isLast = index == items.lastIndex,
                     onClick = { editing = item }
                 ) {
+                    CheckDot(
+                        checked = ticked,
+                        onClick = {
+                            scope.launch {
+                                if (ticked) dao.deleteCheck(item.id, today)
+                                else dao.insertCheck(RoutineCheck(item.id, today))
+                            }
+                        }
+                    )
                     Text(
                         text = item.title,
-                        color = if (status == 0) c.textSecondary else c.textPrimary,
+                        color = if (ticked || status == 0) c.textSecondary else c.textPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
+                        textDecoration = if (ticked) TextDecoration.LineThrough else null,
                         modifier = Modifier.weight(1f)
                     )
                     if (reason != null) {
@@ -343,6 +411,52 @@ fun RoutineSection() {
         }
     }
 
+    if (showTemplates) {
+        TemplatesDialog(
+            onDismiss = { showTemplates = false },
+            onAdd = { template ->
+                scope.launch {
+                    val n = RoutineTemplates.add(context, template)
+                    notice = if (n == 0) "Everything from " + template.name + " is already in your routine."
+                    else "Added $n items from " + template.name + ". Turn on reminders per item."
+                }
+                showTemplates = false
+            },
+            onReplace = { template ->
+                confirmReplace = template
+                showTemplates = false
+            }
+        )
+    }
+
+    val replaceTarget = confirmReplace
+    if (replaceTarget != null) {
+        AlertDialog(
+            onDismissRequest = { confirmReplace = null },
+            containerColor = c.solid,
+            titleContentColor = c.textPrimary,
+            textContentColor = c.textPrimary,
+            title = { Text("Replace routine?") },
+            text = {
+                Text(
+                    "Your current ${items.size} items and their ticks will be deleted and replaced by " +
+                        replaceTarget.name + ".",
+                    color = c.textSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch { RoutineTemplates.replace(context, replaceTarget) }
+                    notice = "Routine replaced with " + replaceTarget.name + ". Turn on reminders per item."
+                    confirmReplace = null
+                }) { Text("Replace", color = c.accent) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmReplace = null }) { Text("Cancel", color = c.textSecondary) }
+            }
+        )
+    }
+
     if (showAdd) {
         RoutineEditDialog(
             initial = null,
@@ -379,6 +493,7 @@ fun RoutineSection() {
             onDelete = {
                 scope.launch {
                     ReminderScheduler.cancelRoutine(context, current.id)
+                    dao.deleteChecksFor(current.id)
                     dao.delete(current.id)
                 }
                 editing = null
@@ -615,6 +730,74 @@ fun RoutineEditDialog(
                 }
                 TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
             }
+        }
+    )
+}
+
+@Composable
+private fun BlockHeader(label: String, isFirst: Boolean, passed: Boolean) {
+    val c = Growth.colors
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Spacer(modifier = Modifier.width(66.dp))
+        Box(
+            modifier = Modifier
+                .width(22.dp)
+                .fillMaxHeight()
+                .drawBehind {
+                    val x = this.size.width / 2f
+                    val lineColor = if (passed) c.accent.copy(alpha = 0.7f) else c.glassBorder
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, if (isFirst) this.size.height / 2f else 0f),
+                        end = Offset(x, this.size.height),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                }
+        )
+        Text(
+            text = label,
+            color = c.textSecondary,
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun TemplatesDialog(
+    onDismiss: () -> Unit,
+    onAdd: (RoutineTemplate) -> Unit,
+    onReplace: (RoutineTemplate) -> Unit
+) {
+    val c = Growth.colors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.solid,
+        titleContentColor = c.textPrimary,
+        textContentColor = c.textPrimary,
+        title = { Text("Routine templates") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                RoutineTemplates.all.forEach { template ->
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = template.name + " (" + template.items.size + " items)",
+                            color = c.textPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SoftButton(text = "Add", onClick = { onAdd(template) })
+                            SoftButton(text = "Replace", onClick = { onReplace(template) })
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Close", color = c.textSecondary) }
         }
     )
 }
