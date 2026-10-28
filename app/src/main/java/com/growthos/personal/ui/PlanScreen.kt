@@ -84,7 +84,7 @@ private val DEFAULT_ROUTINE = listOf(
 )
 
 @Composable
-fun PlanScreen() {
+fun RoutineSection() {
     val c = Growth.colors
     val context = LocalContext.current
     val settings = remember { SettingsStore(context) }
@@ -145,13 +145,9 @@ fun PlanScreen() {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 24.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            ScreenTitle("Plan", modifier = Modifier.weight(1f))
-            AddButton(onClick = { showAdd = true }, diameter = 40.dp)
-        }
 
         // ----- wake-up alarm -----
         GlassCard(modifier = Modifier.fillMaxWidth(), glow = true, padding = 18.dp) {
@@ -267,6 +263,8 @@ fun PlanScreen() {
 
         DayBarCard(nowMin = nowMin)
 
+        Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.weight(1f)) {
         SectionHeader(
             title = "Routine",
             trailing = "Remind all",
@@ -283,6 +281,9 @@ fun PlanScreen() {
                 }
             }
         )
+        }
+        AddButton(onClick = { showAdd = true }, diameter = 40.dp)
+        }
 
         Column {
             items.forEachIndexed { index, item ->

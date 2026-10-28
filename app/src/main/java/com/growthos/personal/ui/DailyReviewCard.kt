@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.growthos.personal.data.AppDatabase
 import com.growthos.personal.data.SettingsStore
+import com.growthos.personal.data.TaskRules
 import com.growthos.personal.reminders.formatMinute
 import java.time.Instant
 import java.time.LocalDate
@@ -52,7 +53,9 @@ fun DailyReviewCard() {
     val workoutLogs by workoutFlow.collectAsState(initial = emptyList())
     val financeToday by financeFlow.collectAsState(initial = emptyList())
 
-    val openTasks = tasks.filter { !it.isDone }
+    val todayTasks = TaskRules.todayTasks(tasks, today)
+    val openTasks = todayTasks.filter { !it.isDone }
+    val overdueCount = openTasks.count { TaskRules.isOverdue(it, today) }
     val habitsDone = habits.count { h -> checkins.any { it.habitId == h.id && it.epochDay == today } }
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -64,12 +67,18 @@ fun DailyReviewCard() {
                 fontSize = 12.sp
             )
             Text(
-                text = "Tasks: ${tasks.size - openTasks.size} done, ${openTasks.size} still open",
+                text = "Tasks: ${todayTasks.size - openTasks.size} done, ${openTasks.size} still open" +
+                    (if (overdueCount > 0) " ($overdueCount overdue)" else ""),
                 color = c.textPrimary,
                 fontSize = 15.sp
             )
             openTasks.take(3).forEach {
-                Text(text = "  - " + it.title, color = c.textSecondary, fontSize = 13.sp)
+                val why = TaskRules.reason(it, today)
+                Text(
+                    text = "  - " + it.title + (if (why != null) " ($why)" else ""),
+                    color = c.textSecondary,
+                    fontSize = 13.sp
+                )
             }
             Text(
                 text = "Habits: $habitsDone of ${habits.size} ticked today",

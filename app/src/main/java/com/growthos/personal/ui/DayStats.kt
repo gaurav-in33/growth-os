@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.growthos.personal.data.AppDatabase
+import com.growthos.personal.data.TaskRules
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.roundToInt
@@ -67,6 +68,8 @@ fun rememberDayStats(): DayStats {
     val studyLogs by studyFlow.collectAsState(initial = emptyList())
     val workoutLogs by workoutFlow.collectAsState(initial = emptyList())
 
+    val todayTasks = TaskRules.todayTasks(tasks, today)
+    val todayDone = todayTasks.count { it.isDone }
     val doneTasks = tasks.count { it.isDone }
     val habitsDone = habits.count { h -> checkins.any { it.habitId == h.id && it.epochDay == today } }
     val glasses = water ?: 0
@@ -74,8 +77,8 @@ fun rememberDayStats(): DayStats {
     val workoutMin = workoutLogs.filter { it.epochDay == today }.sumOf { it.minutes }
 
     val parts = mutableListOf<StatPart>()
-    if (tasks.isNotEmpty()) {
-        parts.add(StatPart("Tasks", points(doneTasks.toDouble() / tasks.size, 25), 25))
+    if (todayTasks.isNotEmpty()) {
+        parts.add(StatPart("Tasks", points(todayDone.toDouble() / todayTasks.size, 25), 25))
     }
     if (habits.isNotEmpty()) {
         parts.add(StatPart("Habits", points(habitsDone.toDouble() / habits.size, 25), 25))
@@ -103,8 +106,8 @@ fun rememberDayStats(): DayStats {
         level = level,
         levelFraction = fraction.coerceIn(0f, 1f),
         xpToNext = levelEnd - xp,
-        tasksDone = doneTasks,
-        tasksTotal = tasks.size,
+        tasksDone = todayDone,
+        tasksTotal = todayTasks.size,
         habitsDone = habitsDone,
         habitsTotal = habits.size,
         focusMin = focusToday,

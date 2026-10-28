@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.growthos.personal.R
 import com.growthos.personal.data.AppDatabase
 import com.growthos.personal.data.TaskEntity
+import com.growthos.personal.data.TaskRules
 import com.growthos.personal.reminders.formatMinute
 import java.time.LocalDate
 import java.time.LocalTime
@@ -61,8 +62,10 @@ fun TodayScreen(name: String, onOpenPlan: () -> Unit) {
     val context = LocalContext.current
     val taskDao = remember { AppDatabase.get(context).taskDao() }
     val tasksFlow = remember(taskDao) { taskDao.observeAll() }
-    val tasks by tasksFlow.collectAsState(initial = emptyList())
+    val allTasks by tasksFlow.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
+    val todayEpoch = remember { LocalDate.now().toEpochDay() }
+    val tasks = TaskRules.todayTasks(allTasks, todayEpoch)
 
     var showAdd by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<TaskEntity?>(null) }
@@ -150,22 +153,35 @@ fun TodayScreen(name: String, onOpenPlan: () -> Unit) {
                     ) {
                         CheckDot(
                             checked = task.isDone,
-                            onClick = { scope.launch { taskDao.setDone(task.id, !task.isDone) } }
+                            onClick = { scope.launch { TaskRules.toggle(context, task) } }
                         )
-                        Text(
-                            text = task.title,
-                            color = if (task.isDone) c.textTertiary else c.textPrimary,
-                            fontSize = 15.5.sp,
-                            textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
+                        Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(horizontal = 12.dp)
-                                .clickNoRipple { scope.launch { taskDao.setDone(task.id, !task.isDone) } }
-                        )
+                                .clickNoRipple { scope.launch { TaskRules.toggle(context, task) } }
+                        ) {
+                            Text(
+                                text = task.title,
+                                color = if (task.isDone) c.textTertiary else c.textPrimary,
+                                fontSize = 15.5.sp,
+                                textDecoration = if (task.isDone) TextDecoration.LineThrough else null
+                            )
+                            val why = TaskRules.reason(task, todayEpoch)
+                            if (why != null) {
+                                Text(
+                                    text = why,
+                                    color = if (why == "Overdue") c.accent else c.textSecondary,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (why == "Overdue") FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
                         MoreMenu(
                             listOf(
                                 "Edit" to { editingTask = task },
-                                "Delete" to { scope.launch { taskDao.delete(task.id) } }
+                                "Postpone 1 day" to { scope.launch { TaskRules.postpone(context, task) } },
+                                "Delete" to { scope.launch { TaskRules.delete(context, task) } }
                             )
                         )
                     }
@@ -200,31 +216,32 @@ fun TodayScreen(name: String, onOpenPlan: () -> Unit) {
     }
 
     if (showAdd) {
-        TextEditDialog(
-            heading = "New task",
-            initial = "",
-            maxLength = 120,
-            onSave = { title ->
-                scope.launch {
-                    taskDao.insert(TaskEntity(title = title, createdAtMillis = System.currentTimeMillis()))
-                }
+        TaskEditorDialog(
+            initial = null,
+            defaultDay = todayEpoch,
+            onDismiss = { showAdd = false },
+            onSave = { t ->
+                scope.launch { TaskRules.save(context, t) }
                 showAdd = false
             },
-            onDismiss = { showAdd = false }
+            onDelete = null
         )
     }
 
     val taskBeingEdited = editingTask
     if (taskBeingEdited != null) {
-        TextEditDialog(
-            heading = "Edit task",
-            initial = taskBeingEdited.title,
-            maxLength = 120,
-            onSave = { newTitle ->
-                scope.launch { taskDao.rename(taskBeingEdited.id, newTitle) }
+        TaskEditorDialog(
+            initial = taskBeingEdited,
+            defaultDay = null,
+            onDismiss = { editingTask = null },
+            onSave = { t ->
+                scope.launch { TaskRules.save(context, t) }
                 editingTask = null
             },
-            onDismiss = { editingTask = null }
+            onDelete = {
+                scope.launch { TaskRules.delete(context, taskBeingEdited) }
+                editingTask = null
+            }
         )
     }
 }

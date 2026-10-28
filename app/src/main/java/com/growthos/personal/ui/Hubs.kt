@@ -55,3 +55,24 @@ fun GrowScreen() {
         }
     }
 }
+
+@Composable
+fun PlanScreen() {
+    var section by rememberSaveable { mutableIntStateOf(0) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ScreenTitle("Plan")
+            Segmented(listOf("Routine", "Tasks", "Calendar"), section, { section = it })
+        }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when (section) {
+                0 -> RoutineSection()
+                1 -> TasksSection()
+                else -> CalendarSection()
+            }
+        }
+    }
+}

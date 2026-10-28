@@ -12,6 +12,8 @@ import android.os.Build
 import com.growthos.personal.MainActivity
 import com.growthos.personal.data.AppDatabase
 import com.growthos.personal.data.SettingsStore
+import com.growthos.personal.data.TaskEntity
+import com.growthos.personal.data.TaskRules
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -24,6 +26,7 @@ object ReminderScheduler {
     // Old channel with a sound, only used if the alarm service cannot start.
     const val CH_WAKE_FALLBACK = "wake_alarm_v1"
     const val CH_REVIEW = "review_v1"
+    const val CH_TASK = "task_v1"
 
     const val ACTION_ROUTINE = "com.growthos.personal.ROUTINE"
     const val ACTION_WAKE = "com.growthos.personal.WAKE"
@@ -31,6 +34,11 @@ object ReminderScheduler {
     const val ACTION_AWAKE = "com.growthos.personal.AWAKE"
     const val ACTION_WAKE_DISMISSED = "com.growthos.personal.WAKE_DISMISSED"
     const val ACTION_REVIEW = "com.growthos.personal.REVIEW"
+    const val ACTION_TASK = "com.growthos.personal.TASK"
+    const val ACTION_TASK_DONE = "com.growthos.personal.TASK_DONE"
+    const val ACTION_TASK_SNOOZE = "com.growthos.personal.TASK_SNOOZE"
+
+    const val NOTIF_TASK_BASE = 500_000
 
     // Snooze is exactly 5 minutes.
     const val SNOOZE_MILLIS = 5 * 60 * 1000L
@@ -42,6 +50,8 @@ object ReminderScheduler {
     private const val CODE_REVIEW = 4
     private const val CODE_ROUTINE_BASE = 1000
     private const val CODE_ROUTINE_SNOOZE_BASE = 3000
+    private const val CODE_TASK_BASE = 100_000
+    private const val CODE_TASK_SNOOZE_BASE = 200_000
 
     private const val FLAGS = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 
@@ -86,6 +96,11 @@ object ReminderScheduler {
         val review = NotificationChannel(CH_REVIEW, "Evening review", NotificationManager.IMPORTANCE_DEFAULT)
         review.description = "A daily nudge to review your day"
         nm.createNotificationChannel(review)
+
+        val task = NotificationChannel(CH_TASK, "Task reminders", NotificationManager.IMPORTANCE_HIGH)
+        task.description = "Reminders for tasks with a date and time"
+        task.enableVibration(true)
+        nm.createNotificationChannel(task)
     }
 
     fun canScheduleExact(context: Context): Boolean {
@@ -155,6 +170,41 @@ object ReminderScheduler {
             CODE_ROUTINE_SNOOZE_BASE + id.toInt(),
             routineIntent(context, id, title, minute, true)
         )
+        setExactCompat(context, System.currentTimeMillis() + SNOOZE_MILLIS, pi)
+    }
+
+    // ---------- task reminders ----------
+
+    private fun taskIntent(context: Context, id: Long, title: String, snoozed: Boolean): Intent =
+        receiverIntent(context, ACTION_TASK)
+            .putExtra("id", id)
+            .putExtra("title", title)
+            .putExtra("snoozed", snoozed)
+
+    /** One reminder at the task's due date and time. Skipped in quiet hours and the 10-12 block. */
+    fun scheduleTask(context: Context, task: TaskEntity) {
+        val day = task.dueEpochDay ?: return
+        val minute = task.dueMinute ?: return
+        if (!task.remind || task.isDone) return
+        if (NotificationRules.reason(minute) != null) return
+        ensureChannels(context)
+        val zone = ZoneId.systemDefault()
+        val triggerAt = LocalDate.ofEpochDay(day)
+            .atTime(minute / 60, minute % 60)
+            .atZone(zone).toInstant().toEpochMilli()
+        if (triggerAt <= System.currentTimeMillis()) return
+        val pi = broadcast(context, CODE_TASK_BASE + task.id.toInt(), taskIntent(context, task.id, task.title, false))
+        setExactCompat(context, triggerAt, pi)
+    }
+
+    fun cancelTask(context: Context, id: Long) {
+        val am = context.getSystemService(AlarmManager::class.java)
+        am.cancel(broadcast(context, CODE_TASK_BASE + id.toInt(), receiverIntent(context, ACTION_TASK)))
+        am.cancel(broadcast(context, CODE_TASK_SNOOZE_BASE + id.toInt(), receiverIntent(context, ACTION_TASK)))
+    }
+
+    fun scheduleTaskSnooze(context: Context, id: Long, title: String) {
+        val pi = broadcast(context, CODE_TASK_SNOOZE_BASE + id.toInt(), taskIntent(context, id, title, true))
         setExactCompat(context, System.currentTimeMillis() + SNOOZE_MILLIS, pi)
     }
 
@@ -238,6 +288,10 @@ object ReminderScheduler {
 
     suspend fun rescheduleAll(context: Context) {
         ensureChannels(context)
+        TaskRules.rollover(context)
+        for (task in AppDatabase.get(context).taskDao().getAll()) {
+            TaskRules.syncReminder(context, task)
+        }
         val items = AppDatabase.get(context).routineDao().getAll()
         for (item in items) {
             if (item.remind && NotificationRules.reason(item.startMinute) == null) {

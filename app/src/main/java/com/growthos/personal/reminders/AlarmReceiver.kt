@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.growthos.personal.MainActivity
 import com.growthos.personal.data.AppDatabase
 import com.growthos.personal.data.SettingsStore
+import com.growthos.personal.data.TaskRules
 import com.growthos.personal.data.WakeConfirmation
 import java.time.LocalDate
 import java.time.LocalTime
@@ -29,6 +30,9 @@ class AlarmReceiver : BroadcastReceiver() {
             ReminderScheduler.ACTION_AWAKE -> handleAwake(context, intent)
             ReminderScheduler.ACTION_WAKE_DISMISSED -> showConfirm(context)
             ReminderScheduler.ACTION_REVIEW -> handleReview(context)
+            ReminderScheduler.ACTION_TASK -> handleTask(context, intent)
+            ReminderScheduler.ACTION_TASK_DONE -> handleTaskDone(context, intent)
+            ReminderScheduler.ACTION_TASK_SNOOZE -> handleTaskSnooze(context, intent)
         }
     }
 
@@ -36,6 +40,84 @@ class AlarmReceiver : BroadcastReceiver() {
 
     private fun openAppIntent(context: Context, code: Int): PendingIntent =
         PendingIntent.getActivity(context, code, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+
+    // ---------- tasks ----------
+
+    private fun handleTask(context: Context, intent: Intent) {
+        val id = intent.getLongExtra("id", -1L)
+        if (id < 0) return
+        val now = LocalTime.now()
+        if (NotificationRules.reason(now.hour * 60 + now.minute) != null) return
+
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val task = AppDatabase.get(context).taskDao().get(id)
+                if (task != null && !task.isDone) {
+                    ReminderScheduler.ensureChannels(context)
+                    val notifId = ReminderScheduler.NOTIF_TASK_BASE + id.toInt()
+                    val donePi = PendingIntent.getBroadcast(
+                        context, 300_000 + id.toInt(),
+                        Intent(context, AlarmReceiver::class.java)
+                            .setAction(ReminderScheduler.ACTION_TASK_DONE)
+                            .putExtra("id", id),
+                        flags()
+                    )
+                    val snoozePi = PendingIntent.getBroadcast(
+                        context, 400_000 + id.toInt(),
+                        Intent(context, AlarmReceiver::class.java)
+                            .setAction(ReminderScheduler.ACTION_TASK_SNOOZE)
+                            .putExtra("id", id)
+                            .putExtra("title", task.title),
+                        flags()
+                    )
+                    val openIntent = Intent(context, MainActivity::class.java).putExtra("open_tab", 1)
+                    val openPi = PendingIntent.getActivity(context, 500_000 + id.toInt(), openIntent, flags())
+                    val dueMinute = task.dueMinute
+                    val text = if (dueMinute != null) "Due " + formatMinute(dueMinute) else "Task reminder"
+                    val notification = NotificationCompat.Builder(context, ReminderScheduler.CH_TASK)
+                        .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                        .setContentTitle(task.title)
+                        .setContentText(text)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                        .setDefaults(NotificationCompat.DEFAULT_ALL)
+                        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                        .setContentIntent(openPi)
+                        .setAutoCancel(true)
+                        .addAction(0, "Mark complete", donePi)
+                        .addAction(0, "Snooze 5 min", snoozePi)
+                        .build()
+                    NotificationManagerCompat.from(context).notify(notifId, notification)
+                }
+            } catch (e: SecurityException) {
+                // notifications are not allowed
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    private fun handleTaskDone(context: Context, intent: Intent) {
+        val id = intent.getLongExtra("id", -1L)
+        if (id < 0) return
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                TaskRules.complete(context, id)
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    private fun handleTaskSnooze(context: Context, intent: Intent) {
+        val id = intent.getLongExtra("id", -1L)
+        val title = intent.getStringExtra("title") ?: return
+        if (id < 0) return
+        NotificationManagerCompat.from(context).cancel(ReminderScheduler.NOTIF_TASK_BASE + id.toInt())
+        ReminderScheduler.scheduleTaskSnooze(context, id, title)
+    }
 
     // ---------- routine ----------
 
