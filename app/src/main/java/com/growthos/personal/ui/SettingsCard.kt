@@ -117,7 +117,7 @@ fun SettingsCard() {
             }
             Text(text = "Backup", color = c.textPrimary, fontSize = 15.sp)
             Text(
-                text = "Your data is stored only on this phone and the app has no internet access. " +
+                text = "Your data is stored only on this phone. Internet is used only if you turn on the AI assistant. " +
                     "Save a backup file now and then (for example into Google Drive from the Files screen).",
                 color = c.textSecondary,
                 fontSize = 13.sp

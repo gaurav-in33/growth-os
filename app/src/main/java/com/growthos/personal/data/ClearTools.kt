@@ -21,6 +21,7 @@ object ClearTools {
         db.clearAllTables()
         SettingsStore(context).clearAll()
         ProfileStore(context).clearAll()
+        AiStore(context).clearAll()
         try {
             context.getSystemService(NotificationManager::class.java).cancelAll()
         } catch (e: Exception) {

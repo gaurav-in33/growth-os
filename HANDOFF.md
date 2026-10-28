@@ -5,7 +5,7 @@ Give code as growth-os-project.zip with ONLY changed files at real paths (app/sr
 
 ## Project
 Growth OS = private native Android app (Kotlin, Jetpack Compose, Room), package com.growthos.personal, repo github.com/gaurav-in33/growth-os (public).
-Current: v1.10.0, DB v9. A-D verified. E (Onboarding, v1.9.0) and F (Clear All Data, v1.10.0) built, NOT yet verified.
+Current: v1.11.0, DB v9. A-D verified. E (Onboarding, v1.9.0) and F (Clear All Data, v1.10.0) and G (AI, v1.11.0) built, NOT yet verified.
 
 ## How updates work (do not change)
 1. You give growth-os-project.zip (only changed files).
@@ -26,8 +26,8 @@ Steps: name -> pick goals (chips + custom, creates Weekly/Long-term goals via Go
 
 ## Later (not now), in this order
 F DONE v1.10.0 (More > Settings > Danger zone, type DELETE, cancels alarms, wipes DB+prefs, restarts app).
-G (NEXT) Optional AI assistant (own free Gemini key in Settings, default OFF, adds INTERNET permission, never send finance/notes).
-H Home-screen widget.
+G DONE v1.11.0 (More > Settings > AI assistant, AiStore/AiClient/AiCard, generateContent, default model gemini-3.8-flash editable, INTERNET permission added). Original spec: Optional AI assistant (own free Gemini key in Settings, default OFF, adds INTERNET permission, never send finance/notes).
+H (NEXT) Home-screen widget.
 Then: release APK + signing (key only in GitHub Secrets), accessibility, unit tests.
 
 ## Known small issues
