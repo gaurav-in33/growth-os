@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -42,7 +43,13 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.growthos.personal.data.AppDatabase
+import com.growthos.personal.data.GoalEntity
 import com.growthos.personal.data.ProfileStore
+import com.growthos.personal.data.RoutineItemEntity
+import com.growthos.personal.data.RoutineTemplates
+import java.time.LocalDate
+import kotlinx.coroutines.launch
 import com.growthos.personal.data.SettingsStore
 import com.growthos.personal.ui.ThemePrefs
 import com.growthos.personal.ui.resolveDark
@@ -94,6 +101,7 @@ fun GrowthApp(initialTab: Int = 0) {
     var onboarded by remember { mutableStateOf(store.isOnboardingDone()) }
     var name by remember { mutableStateOf(store.name()) }
     var selected by rememberSaveable { mutableIntStateOf(initialTab) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { ReminderScheduler.rescheduleAll(context) }
@@ -123,11 +131,40 @@ fun GrowthApp(initialTab: Int = 0) {
                     .navigationBarsPadding()
                     .imePadding()
             ) {
-                OnboardingScreen(onDone = { enteredName ->
-                    store.setName(enteredName)
-                    store.setOnboardingDone()
-                    name = enteredName
-                    onboarded = true
+                OnboardingScreen(onDone = { result ->
+                    store.setName(result.name)
+                    name = result.name
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            val db = AppDatabase.get(context)
+                            val today = LocalDate.now().toEpochDay()
+                            for (g in result.goals) {
+                                db.goalDao().insert(
+                                    GoalEntity(
+                                        title = g.title,
+                                        horizon = g.horizon,
+                                        progress = 0,
+                                        createdEpochDay = today
+                                    )
+                                )
+                            }
+                            val settings = SettingsStore(context)
+                            if (result.useRoutine == true) {
+                                if (db.routineDao().count() == 0) {
+                                    db.routineDao().insertAll(
+                                        RoutineTemplates.MY_DAY.map {
+                                            RoutineItemEntity(title = it.second, startMinute = it.first)
+                                        }
+                                    )
+                                }
+                                settings.setRoutineSeeded()
+                            } else if (result.useRoutine == false) {
+                                settings.setRoutineSeeded()
+                            }
+                        }
+                        store.setOnboardingDone()
+                        onboarded = true
+                    }
                 })
             }
         } else {
