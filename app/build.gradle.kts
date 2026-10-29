@@ -13,13 +13,28 @@ android {
         applicationId = "com.growthos.personal"
         minSdk = 26
         targetSdk = 35
-        versionCode = 23
-        versionName = "1.12.0"
+        versionCode = 24
+        versionName = "1.13.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEY_PASSPHRASE")
+                keyAlias = "growthos"
+                keyPassword = System.getenv("KEY_PASSPHRASE")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (System.getenv("KEYSTORE_PATH") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
