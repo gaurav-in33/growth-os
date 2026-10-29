@@ -22,6 +22,7 @@ object ClearTools {
         SettingsStore(context).clearAll()
         ProfileStore(context).clearAll()
         AiStore(context).clearAll()
+        com.growthos.personal.TodayWidget.refresh(context)
         try {
             context.getSystemService(NotificationManager::class.java).cancelAll()
         } catch (e: Exception) {

@@ -68,6 +68,11 @@ import com.growthos.personal.ui.TodayScreen
 import com.growthos.personal.ui.TrackScreen
 
 class MainActivity : ComponentActivity() {
+    override fun onPause() {
+        super.onPause()
+        TodayWidget.refresh(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
