@@ -1,0 +1,29 @@
+name: Create signing key (run once)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make encrypted key
+        env:
+          KEY_PASSPHRASE: ${{ secrets.KEY_PASSPHRASE }}
+        run: |
+          if [ -z "$KEY_PASSPHRASE" ]; then echo "Secret KEY_PASSPHRASE missing"; exit 1; fi
+          if [ ${#KEY_PASSPHRASE} -lt 16 ]; then echo "Passphrase too short"; exit 1; fi
+          if [ -f release-key.enc ]; then echo "Key already exists"; exit 1; fi
+          keytool -genkeypair -keystore release.jks -alias growthos -keyalg RSA -keysize 2048 -validity 10000 -storepass "$KEY_PASSPHRASE" -keypass "$KEY_PASSPHRASE" -dname "CN=Growth OS, O=Personal, C=IN"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in release.jks -out release-key.enc -pass env:KEY_PASSPHRASE
+          rm release.jks
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add release-key.enc
+          git commit -m "Add encrypted signing key"
+          git push
