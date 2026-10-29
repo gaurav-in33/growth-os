@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -33,6 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -54,9 +58,14 @@ import java.util.Locale
 
 @Composable
 fun Modifier.clickNoRipple(onClick: () -> Unit): Modifier =
+    this.clickNoRipple(Role.Button, onClick)
+
+@Composable
+fun Modifier.clickNoRipple(role: Role, onClick: () -> Unit): Modifier =
     this.clickable(
         interactionSource = remember { MutableInteractionSource() },
         indication = null,
+        role = role,
         onClick = onClick
     )
 
@@ -192,7 +201,8 @@ fun GlowButton(
                 if (enabled) Brush.linearGradient(listOf(c.accent2, c.accent))
                 else SolidColor(c.track)
             )
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .heightIn(min = 48.dp)
             .padding(horizontal = 20.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -214,7 +224,8 @@ fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier)
         modifier = modifier
             .clip(shape)
             .background(c.tag)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = 44.dp)
             .padding(horizontal = 18.dp, vertical = 11.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -229,7 +240,7 @@ fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier)
 }
 
 @Composable
-fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier, diameter: Dp = 44.dp) {
+fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier, diameter: Dp = 48.dp) {
     val c = Growth.colors
     Box(
         modifier = modifier
@@ -237,7 +248,7 @@ fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier, diameter: Dp =
             .shadow(10.dp, CircleShape, ambientColor = c.glow, spotColor = c.glow)
             .clip(CircleShape)
             .background(Brush.linearGradient(listOf(c.accent2, c.accent)))
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -258,6 +269,8 @@ fun MiniChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Mo
             .clip(shape)
             .background(if (selected) c.tag else c.track)
             .clickNoRipple(onClick)
+            .semantics { stateDescription = if (selected) "Selected" else "Not selected" }
+            .heightIn(min = 44.dp)
             .padding(horizontal = 13.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -295,30 +308,38 @@ fun CheckDot(checked: Boolean, onClick: () -> Unit, modifier: Modifier = Modifie
     val c = Growth.colors
     Box(
         modifier = modifier
-            .size(26.dp)
+            .size(40.dp)
             .clip(CircleShape)
-            .background(
-                if (checked) Brush.linearGradient(listOf(c.accent2, c.accent))
-                else SolidColor(Color.Transparent)
-            )
-            .clickNoRipple(onClick),
+            .clickNoRipple(Role.Checkbox, onClick)
+            .semantics { stateDescription = if (checked) "Done" else "Not done" },
         contentAlignment = Alignment.Center
     ) {
-        if (!checked) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    color = c.textTertiary,
-                    radius = (this.size.minDimension / 2f) - 1.dp.toPx(),
-                    style = Stroke(width = 2.dp.toPx())
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(
+                    if (checked) Brush.linearGradient(listOf(c.accent2, c.accent))
+                    else SolidColor(Color.Transparent)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!checked) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawCircle(
+                        color = c.textTertiary,
+                        radius = (this.size.minDimension / 2f) - 1.dp.toPx(),
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+                }
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(15.dp)
                 )
             }
-        } else {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = "Done",
-                tint = Color.White,
-                modifier = Modifier.size(15.dp)
-            )
         }
     }
 }
@@ -447,9 +468,9 @@ fun MoreMenu(items: List<Pair<String, () -> Unit>>) {
     Box {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(48.dp)
                 .clip(CircleShape)
-                .clickable { open = true },
+                .clickable(role = Role.Button) { open = true },
             contentAlignment = Alignment.Center
         ) {
             Icon(

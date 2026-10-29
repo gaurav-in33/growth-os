@@ -5,7 +5,7 @@ Give code as growth-os-project.zip with ONLY changed files at real paths (app/sr
 
 ## Project
 Growth OS = private native Android app (Kotlin, Jetpack Compose, Room), package com.growthos.personal, repo github.com/gaurav-in33/growth-os (public).
-Current: v1.12.0, DB v9. A-D verified. E (Onboarding, v1.9.0) and F (Clear All Data, v1.10.0) G (AI, v1.11.0) and H (widget, v1.12.0) built, NOT yet verified.
+Current: v1.14.0, DB v9. A-D verified. E (Onboarding, v1.9.0) and F (Clear All Data, v1.10.0) G (AI, v1.11.0) and H (widget, v1.12.0) built, NOT yet verified.
 
 ## How updates work (do not change)
 1. You give growth-os-project.zip (only changed files).
@@ -28,7 +28,7 @@ Steps: name -> pick goals (chips + custom, creates Weekly/Long-term goals via Go
 F DONE v1.10.0 (More > Settings > Danger zone, type DELETE, cancels alarms, wipes DB+prefs, restarts app).
 G DONE v1.11.0 (More > Settings > AI assistant, AiStore/AiClient/AiCard, generateContent, default model gemini-3.8-flash editable, INTERNET permission added). Original spec: Optional AI assistant (own free Gemini key in Settings, default OFF, adds INTERNET permission, never send finance/notes).
 H DONE v1.12.0 (TodayWidget RemoteViews: tasks due/overdue, habits done; refreshes on app pause, every 30 min, after Clear All). Original: Home-screen widget.
-Then: (NEXT) release APK + signing (key only in GitHub Secrets), accessibility, unit tests.
+Then: release APK + signing DONE v1.13.0 (build.gradle reads env KEYSTORE_PATH + KEY_PASSPHRASE; encrypted keystore release-key.enc committed by 'Create signing key' workflow; only secret = KEY_PASSPHRASE; workflows added manually in GitHub because GITHUB_TOKEN cannot push workflow files). Accessibility DONE v1.14.0 (roles, 44-48dp touch targets, tab/checkbox state). Unit tests DONE v1.14.0 (StreakCalculator, TaskRules; run after assembleDebug, failures never block APK). ALL ROADMAP ITEMS DONE; next = bug fixes from phone testing.
 
 ## Known small issues
 XP drops 5 when a recurring task rolls over (XP counts done tasks). Rest day gives 0 workout points. Opening a task reminder lands on Plan > Routine (not Tasks).

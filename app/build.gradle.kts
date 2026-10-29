@@ -13,8 +13,8 @@ android {
         applicationId = "com.growthos.personal"
         minSdk = 26
         targetSdk = 35
-        versionCode = 24
-        versionName = "1.13.0"
+        versionCode = 25
+        versionName = "1.14.0"
     }
 
     signingConfigs {
@@ -46,6 +46,21 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+}
+
+// Unit tests run after every debug build. Failures are only reported in the log, they never block the APK.
+tasks.withType<Test>().configureEach {
+    ignoreFailures = true
+    testLogging {
+        events("passed", "failed")
+    }
+}
+tasks.matching { it.name == "assembleDebug" }.configureEach {
+    finalizedBy("testDebugUnitTest")
 }
 
 kotlin {
@@ -62,4 +77,6 @@ dependencies {
     implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
+
+    testImplementation("junit:junit:4.13.2")
 }
