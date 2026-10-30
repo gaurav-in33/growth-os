@@ -82,7 +82,6 @@ fun ProfileScreen(name: String, onSaveName: (String) -> Unit) {
                         }
                     }
                     SettingsCard()
-                    AiCard()
                     ReviewReminderCard()
                 }
             }

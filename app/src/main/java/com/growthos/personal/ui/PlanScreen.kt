@@ -1,5 +1,8 @@
 package com.growthos.personal.ui
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Icon
 import android.Manifest
 import android.app.TimePickerDialog
 import android.content.Intent
@@ -95,6 +98,7 @@ fun RoutineSection() {
     var wakeMinute by remember { mutableIntStateOf(settings.wakeMinute()) }
     var notice by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<RoutineItemEntity?>(null) }
+    var deletingItem by remember { mutableStateOf<RoutineItemEntity?>(null) }
     var showAdd by remember { mutableStateOf(false) }
     var showTips by remember { mutableStateOf(false) }
     var afterPermission by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -261,27 +265,35 @@ fun RoutineSection() {
 
         DayBarCard(nowMin = nowMin)
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.weight(1f)) {
-        SectionHeader(
-            title = "Routine",
-            trailing = "Remind all",
-            onTrailing = {
-                withNotificationPermission {
-                    scope.launch {
-                        for (item in items) {
-                            if (NotificationRules.reason(item.startMinute) == null) {
-                                dao.setRemind(item.id, true)
-                                ReminderScheduler.scheduleRoutine(context, item.id, item.title, item.startMinute)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Routine",
+                color = c.textPrimary,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.weight(1f).padding(start = 2.dp)
+            )
+            SoftButton(
+                text = "Remind all",
+                onClick = {
+                    withNotificationPermission {
+                        scope.launch {
+                            for (item in items) {
+                                if (NotificationRules.reason(item.startMinute) == null) {
+                                    dao.setRemind(item.id, true)
+                                    ReminderScheduler.scheduleRoutine(context, item.id, item.title, item.startMinute)
+                                }
                             }
                         }
                     }
                 }
-            }
-        )
+            )
+            AddButton(onClick = { showAdd = true }, diameter = 46.dp)
         }
-        AddButton(onClick = { showAdd = true }, diameter = 40.dp)
-        }
+
 
         if (paused) {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -356,7 +368,12 @@ fun RoutineSection() {
                     status = status,
                     isFirst = false,
                     isLast = index == items.lastIndex,
-                    onClick = { editing = item }
+                    onClick = {
+                        scope.launch {
+                            if (ticked) dao.deleteCheck(item.id, today)
+                            else dao.insertCheck(RoutineCheck(item.id, today))
+                        }
+                    }
                 ) {
                     CheckDot(
                         checked = ticked,
@@ -375,13 +392,28 @@ fun RoutineSection() {
                         textDecoration = if (ticked) TextDecoration.LineThrough else null,
                         modifier = Modifier.weight(1f)
                     )
+                    if (item.remind) {
+                        Icon(
+                            imageVector = Icons.Filled.Notifications,
+                            contentDescription = "Reminder on",
+                            tint = c.accent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                     if (reason != null) {
                         TagPill(if (reason.startsWith("Protected")) "Protected" else "Quiet")
-                    } else {
-                        Switch(
-                            checked = item.remind,
-                            onCheckedChange = { on ->
-                                if (on) {
+                    }
+                    val menu = mutableListOf<Pair<String, () -> Unit>>()
+                    menu.add("Edit" to { editing = item })
+                    if (reason == null) {
+                        menu.add(
+                            (if (item.remind) "Turn reminder off" else "Turn reminder on") to {
+                                if (item.remind) {
+                                    scope.launch {
+                                        dao.setRemind(item.id, false)
+                                        ReminderScheduler.cancelRoutine(context, item.id)
+                                    }
+                                } else {
                                     withNotificationPermission {
                                         scope.launch {
                                             dao.setRemind(item.id, true)
@@ -390,25 +422,41 @@ fun RoutineSection() {
                                             )
                                         }
                                     }
-                                } else {
-                                    scope.launch {
-                                        dao.setRemind(item.id, false)
-                                        ReminderScheduler.cancelRoutine(context, item.id)
-                                    }
                                 }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedTrackColor = c.accent,
-                                checkedThumbColor = Color.White,
-                                uncheckedTrackColor = c.track,
-                                uncheckedThumbColor = Color.White,
-                                uncheckedBorderColor = Color.Transparent
-                            )
+                            }
                         )
                     }
+                    menu.add("Delete" to { deletingItem = item })
+                    MoreMenu(menu)
                 }
             }
         }
+    }
+
+    val toDelete = deletingItem
+    if (toDelete != null) {
+        ThemedDialog(
+            title = "Delete this step?",
+            onDismiss = { deletingItem = null },
+            content = {
+                Text(text = toDelete.title, color = c.textSecondary, fontSize = 15.sp)
+            },
+            actions = {
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = { deletingItem = null }) { Text("Cancel", color = c.textSecondary) }
+                GlowButton(
+                    text = "Delete",
+                    onClick = {
+                        deletingItem = null
+                        scope.launch {
+                            ReminderScheduler.cancelRoutine(context, toDelete.id)
+                            dao.deleteChecksFor(toDelete.id)
+                            dao.delete(toDelete.id)
+                        }
+                    }
+                )
+            }
+        )
     }
 
     if (showTemplates) {
@@ -673,63 +721,71 @@ fun RoutineEditDialog(
     var minute by remember { mutableIntStateOf(initial?.startMinute ?: 540) }
     var errorText by remember { mutableStateOf<String?>(null) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = c.solid,
-        titleContentColor = c.textPrimary,
-        textContentColor = c.textPrimary,
-        title = { Text(if (initial == null) "Add routine item" else "Edit routine item") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = {
-                        title = it
-                        errorText = null
-                    },
-                    singleLine = true,
-                    label = { Text("Activity name") },
-                    isError = errorText != null,
-                    supportingText = {
-                        val message = errorText
-                        if (message != null) Text(message)
-                    },
-                    colors = glassFieldColors()
+    ThemedDialog(
+        title = if (initial == null) "New routine step" else "Edit routine step",
+        onDismiss = onDismiss,
+        content = {
+            OutlinedTextField(
+                value = title,
+                onValueChange = {
+                    title = it
+                    errorText = null
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("What do you do?") },
+                isError = errorText != null,
+                supportingText = {
+                    val message = errorText
+                    if (message != null) Text(message)
+                },
+                colors = glassFieldColors()
+            )
+            Text(
+                text = "Start time",
+                color = c.textSecondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(c.tag)
+                    .clickNoRipple {
+                        android.app.TimePickerDialog(
+                            context,
+                            { _, h, m -> minute = h * 60 + m },
+                            minute / 60,
+                            minute % 60,
+                            false
+                        ).show()
+                    }
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                Text(
+                    text = formatMinute(minute) + "   tap to change",
+                    color = c.accent,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold
                 )
-                TextButton(onClick = {
-                    TimePickerDialog(
-                        context,
-                        { _, hour, min -> minute = hour * 60 + min },
-                        minute / 60,
-                        minute % 60,
-                        false
-                    ).show()
-                }) {
-                    Text("Time: ${formatMinute(minute)} (tap to change)", color = c.accent)
-                }
             }
         },
-        confirmButton = {
-            TextButton(onClick = {
-                val trimmed = title.trim()
-                if (trimmed.isEmpty()) {
-                    errorText = "Enter an activity name"
-                } else if (trimmed.length > 60) {
-                    errorText = "Keep it under 60 characters"
-                } else {
-                    onSave(trimmed, minute)
-                }
-            }) {
-                Text("Save", color = c.accent)
+        actions = {
+            if (onDelete != null) {
+                TextButton(onClick = onDelete) { Text("Delete", color = Color(0xFFE5484D)) }
             }
-        },
-        dismissButton = {
-            Row {
-                if (onDelete != null) {
-                    TextButton(onClick = onDelete) { Text("Delete", color = c.textSecondary) }
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
+            GlowButton(
+                text = "Save",
+                onClick = {
+                    val t = title.trim()
+                    if (t.isEmpty()) errorText = "Write a name"
+                    else if (t.length > 60) errorText = "Keep it under 60 characters"
+                    else onSave(t, minute)
                 }
-                TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
-            }
+            )
         }
     )
 }

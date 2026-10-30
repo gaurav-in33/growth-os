@@ -16,6 +16,9 @@ data class FocusSessionEntity(
 
 @Dao
 interface FocusDao {
+    @Query("SELECT * FROM focus_sessions WHERE endedAtMillis >= :sinceMillis")
+    fun observeSessionsSince(sinceMillis: Long): Flow<List<FocusSessionEntity>>
+
     @Query("SELECT COALESCE(SUM(minutes), 0) FROM focus_sessions WHERE endedAtMillis >= :sinceMillis")
     fun observeMinutesSince(sinceMillis: Long): Flow<Int>
 

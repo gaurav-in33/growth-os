@@ -19,6 +19,9 @@ data class FinanceEntryEntity(
 
 @Dao
 interface FinanceDao {
+    @Query("UPDATE finance_entries SET epochDay = :epochDay, kind = :kind, amountPaise = :amountPaise, category = :category, note = :note WHERE id = :id")
+    suspend fun updateFull(id: Long, epochDay: Long, kind: String, amountPaise: Long, category: String, note: String)
+
     @Query("SELECT * FROM finance_entries WHERE epochDay >= :fromDay AND epochDay <= :toDay ORDER BY epochDay DESC, id DESC")
     fun observeBetween(fromDay: Long, toDay: Long): Flow<List<FinanceEntryEntity>>
 

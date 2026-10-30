@@ -2,7 +2,9 @@ package com.growthos.personal.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -10,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.growthos.personal.data.AppDatabase
@@ -19,6 +22,8 @@ import com.growthos.personal.reminders.formatMinute
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun DailyReviewCard() {
@@ -31,94 +36,103 @@ fun DailyReviewCard() {
         LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
 
-    val tasksFlow = remember(db) { db.taskDao().observeAll() }
-    val habitsFlow = remember(db) { db.habitDao().observeActive() }
-    val checkinsFlow = remember(db) { db.habitDao().observeCheckins() }
-    val minutesFlow = remember(db) { db.focusDao().observeMinutesSince(startOfDay) }
-    val waterFlow = remember(db) { db.waterDao().observe(today) }
-    val wakeFlow = remember(db) { db.wakeDao().observe(today) }
-    val checkinFlow = remember(db) { db.checkinDao().observe(today) }
-    val studyFlow = remember(db) { db.studyDao().observeSince(today) }
-    val workoutFlow = remember(db) { db.workoutDao().observeSince(today) }
-    val financeFlow = remember(db) { db.financeDao().observeBetween(today, today) }
-    val routineFlow = remember(db) { db.routineDao().observeAll() }
-    val routineCheckFlow = remember(db) { db.routineDao().observeCheckedIds(today) }
-
-    val tasks by tasksFlow.collectAsState(initial = emptyList())
-    val habits by habitsFlow.collectAsState(initial = emptyList())
-    val checkins by checkinsFlow.collectAsState(initial = emptyList())
-    val focusMinutes by minutesFlow.collectAsState(initial = 0)
-    val water by waterFlow.collectAsState(initial = null)
-    val wake by wakeFlow.collectAsState(initial = null)
-    val checkin by checkinFlow.collectAsState(initial = null)
-    val studyLogs by studyFlow.collectAsState(initial = emptyList())
-    val workoutLogs by workoutFlow.collectAsState(initial = emptyList())
-    val financeToday by financeFlow.collectAsState(initial = emptyList())
-    val routineItems by routineFlow.collectAsState(initial = emptyList())
-    val routineChecked by routineCheckFlow.collectAsState(initial = emptyList())
+    val tasks by remember(db) { db.taskDao().observeAll() }.collectAsState(initial = emptyList())
+    val habits by remember(db) { db.habitDao().observeActive() }.collectAsState(initial = emptyList())
+    val checkins by remember(db) { db.habitDao().observeCheckins() }.collectAsState(initial = emptyList())
+    val focusMinutes by remember(db) { db.focusDao().observeMinutesSince(startOfDay) }.collectAsState(initial = 0)
+    val water by remember(db) { db.waterDao().observe(today) }.collectAsState(initial = null)
+    val wake by remember(db) { db.wakeDao().observe(today) }.collectAsState(initial = null)
+    val checkin by remember(db) { db.checkinDao().observe(today) }.collectAsState(initial = null)
+    val studyLogs by remember(db) { db.studyDao().observeSince(today) }.collectAsState(initial = emptyList())
+    val workoutLogs by remember(db) { db.workoutDao().observeSince(today) }.collectAsState(initial = emptyList())
+    val financeToday by remember(db) { db.financeDao().observeBetween(today, today) }.collectAsState(initial = emptyList())
+    val routineItems by remember(db) { db.routineDao().observeAll() }.collectAsState(initial = emptyList())
+    val routineChecked by remember(db) { db.routineDao().observeCheckedIds(today) }.collectAsState(initial = emptyList())
     val routinePaused = settings.pausedDay() == today
 
     val todayTasks = TaskRules.todayTasks(tasks, today)
     val openTasks = todayTasks.filter { !it.isDone }
-    val overdueCount = openTasks.count { TaskRules.isOverdue(it, today) }
+    val tasksDone = todayTasks.size - openTasks.size
     val habitsDone = habits.count { h -> checkins.any { it.habitId == h.id && it.epochDay == today } }
+    val routineDone = routineItems.count { it.id in routineChecked }
+    val studyMin = studyLogs.sumOf { it.minutes }
+    val workoutMin = workoutLogs.sumOf { it.minutes }
+    val spentToday = financeToday.filter { it.kind == "Expense" }.sumOf { it.amountPaise }
+    val mood = checkin?.mood ?: 0
+    val energy = checkin?.energy ?: 0
+    val sleep = checkin?.sleepMinutes ?: 0
+
+    fun ratio(done: Int, total: Int): Float = if (total <= 0) 0f else done.toFloat() / total
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text = "Daily review", color = c.textPrimary, fontSize = 18.sp)
-            Text(
-                text = "Recorded facts only.",
-                color = c.textSecondary,
-                fontSize = 12.sp
-            )
-            Text(
-                text = "Tasks: ${todayTasks.size - openTasks.size} done, ${openTasks.size} still open" +
-                    (if (overdueCount > 0) " ($overdueCount overdue)" else ""),
-                color = c.textPrimary,
-                fontSize = 15.sp
-            )
-            openTasks.take(3).forEach {
-                val why = TaskRules.reason(it, today)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text(
-                    text = "  - " + it.title + (if (why != null) " ($why)" else ""),
+                    text = "Today's snapshot",
+                    color = c.textPrimary,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = LocalDate.now().format(DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)),
                     color = c.textSecondary,
-                    fontSize = 13.sp
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
-            Text(
-                text = "Habits: $habitsDone of ${habits.size} ticked today",
-                color = c.textPrimary,
-                fontSize = 15.sp
-            )
-            Text(
-                text = if (routinePaused) "Routine: paused today"
-                else "Routine: ${routineItems.count { it.id in routineChecked }} of ${routineItems.size} ticked",
-                color = c.textPrimary,
-                fontSize = 15.sp
-            )
-            Text(text = "Focus: $focusMinutes min completed today", color = c.textPrimary, fontSize = 15.sp)
-            Text(text = "Water: ${water ?: 0} glasses", color = c.textPrimary, fontSize = 15.sp)
-            val studyMin = studyLogs.filter { it.kind == "Study" }.sumOf { it.minutes }
-            val codingMin = studyLogs.filter { it.kind == "Coding" }.sumOf { it.minutes }
-            Text(text = "Study: $studyMin min, Coding: $codingMin min", color = c.textPrimary, fontSize = 15.sp)
-            Text(text = "Workout: ${workoutLogs.sumOf { it.minutes }} min", color = c.textPrimary, fontSize = 15.sp)
-            val moodValue = checkin?.mood ?: 0
-            val energyValue = checkin?.energy ?: 0
-            val moodText = if (moodValue == 0) "not logged" else "$moodValue of 5"
-            val energyText = if (energyValue == 0) "not logged" else "$energyValue of 5"
-            Text(text = "Sleep: " + formatSleepMinutes(checkin?.sleepMinutes ?: 0), color = c.textPrimary, fontSize = 15.sp)
-            Text(text = "Mood: $moodText, Energy: $energyText", color = c.textPrimary, fontSize = 15.sp)
-            val spentToday = financeToday.filter { it.kind == "Expense" }.sumOf { it.amountPaise }
-            Text(text = "Spent today: " + formatRupees(spentToday), color = c.textPrimary, fontSize = 15.sp)
-            if (settings.wakeEnabled()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile("\u2705", "Tasks", tasksDone.toString() + "/" + todayTasks.size, Modifier.weight(1f), ratio(tasksDone, todayTasks.size))
+                StatTile("\uD83D\uDD01", "Habits", habitsDone.toString() + "/" + habits.size, Modifier.weight(1f), ratio(habitsDone, habits.size))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile(
+                    "\uD83D\uDDD3\uFE0F", "Routine",
+                    if (routinePaused) "Paused" else routineDone.toString() + "/" + routineItems.size,
+                    Modifier.weight(1f),
+                    if (routinePaused) null else ratio(routineDone, routineItems.size)
+                )
+                StatTile("\u23F1\uFE0F", "Focus", focusMinutes.toString() + " min", Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile("\uD83D\uDCA7", "Water", (water ?: 0).toString() + "/8", Modifier.weight(1f), ratio(water ?: 0, 8))
+                StatTile("\uD83D\uDCDA", "Study + coding", studyMin.toString() + " min", Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile("\uD83C\uDFCB\uFE0F", "Workout", workoutMin.toString() + " min", Modifier.weight(1f))
+                StatTile("\uD83D\uDE34", "Sleep", if (sleep > 0) formatSleepMinutes(sleep) else "-", Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile("\uD83D\uDE42", "Mood", if (mood > 0) mood.toString() + "/5" else "-", Modifier.weight(1f))
+                StatTile("\u26A1", "Energy", if (energy > 0) energy.toString() + "/5" else "-", Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile("\uD83D\uDCB8", "Spent today", formatRupees(spentToday), Modifier.weight(1f))
                 val stamp = wake
-                val line = if (stamp == null) {
-                    "Wake-up: not confirmed yet"
-                } else {
+                val wakeText = if (!settings.wakeEnabled()) "Off"
+                else if (stamp == null) "Not yet"
+                else {
                     val z = Instant.ofEpochMilli(stamp).atZone(ZoneId.systemDefault())
-                    "Wake-up: confirmed at " + formatMinute(z.hour * 60 + z.minute)
+                    formatMinute(z.hour * 60 + z.minute)
                 }
-                Text(text = line, color = c.textPrimary, fontSize = 15.sp)
+                StatTile("\u23F0", "Wake-up", wakeText, Modifier.weight(1f))
+            }
+            if (openTasks.isNotEmpty()) {
+                Text(
+                    text = "Still to do",
+                    color = c.textSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                openTasks.take(3).forEach {
+                    val why = TaskRules.reason(it, today)
+                    Text(
+                        text = "\u2022 " + it.title + (if (why != null) "  (" + why + ")" else ""),
+                        color = c.textPrimary,
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
     }

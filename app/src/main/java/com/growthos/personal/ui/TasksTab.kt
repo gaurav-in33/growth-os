@@ -1,5 +1,10 @@
 package com.growthos.personal.ui
 
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.background
@@ -466,11 +471,28 @@ fun CalendarSection() {
     val length = month.lengthOfMonth()
     val rows = (firstOffset + length + 6) / 7
     val byDay = tasks.filter { it.dueEpochDay != null }.groupBy { it.dueEpochDay ?: 0L }
+    val monthStart = month.atDay(1).toEpochDay()
+    val monthEnd = month.atEndOfMonth().toEpochDay()
+    val monthTasks = tasks.filter { val d = it.dueEpochDay; d != null && d >= monthStart && d <= monthEnd }
+    val monthDone = monthTasks.count { it.isDone }
     val dayTasks = (byDay[selected] ?: emptyList()).sortedWith(
         compareBy<TaskEntity>({ it.isDone }, { it.dueMinute ?: 1440 }, { it.priority })
     )
     val dayTitle = LocalDate.ofEpochDay(selected)
         .format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH))
+    val relative = when (selected - today) {
+        0L -> "Today"
+        1L -> "Tomorrow"
+        -1L -> "Yesterday"
+        else -> ""
+    }
+    val upcoming = tasks
+        .filter { val d = it.dueEpochDay; !it.isDone && d != null && d > selected }
+        .sortedBy { it.dueEpochDay }
+        .take(5)
+    val green = Color(0xFF2EC4B6)
+    val rose = Color(0xFFFF5C8A)
+    var drag by remember { mutableStateOf(0f) }
 
     Column(
         modifier = Modifier
@@ -479,112 +501,187 @@ fun CalendarSection() {
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        GlassCard(modifier = Modifier.fillMaxWidth(), glow = true) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "<",
-                        color = c.accent,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                            .clickNoRipple { monthOffset -= 1 }
-                    )
-                    Text(
-                        text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)),
-                        color = c.textPrimary,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = ">",
-                        color = c.accent,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                            .clickNoRipple { monthOffset += 1 }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(c.tag)
+                            .clickNoRipple { monthOffset -= 1 },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("<", color = c.accent, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)),
+                            color = c.textPrimary,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = if (monthTasks.isEmpty()) "No tasks this month"
+                            else monthTasks.size.toString() + " tasks, " + monthDone + " done",
+                            color = c.textSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(c.tag)
+                            .clickNoRipple { monthOffset += 1 },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(">", color = c.accent, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+                if (monthOffset != 0 || selected != today) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        MiniChip(
+                            label = "Go to today",
+                            selected = false,
+                            onClick = {
+                                monthOffset = 0
+                                selected = today
+                            }
+                        )
+                    }
                 }
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    listOf("M", "T", "W", "T", "F", "S", "S").forEach {
+                    listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun").forEachIndexed { i, label ->
                         Text(
-                            text = it,
-                            color = c.textTertiary,
-                            fontSize = 12.sp,
+                            text = label,
+                            color = if (i >= 5) c.accent else c.textTertiary,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
-                for (r in 0 until rows) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        for (col in 0 until 7) {
-                            val dayNumber = r * 7 + col - firstOffset + 1
-                            if (dayNumber < 1 || dayNumber > length) {
-                                Box(modifier = Modifier.weight(1f).aspectRatio(1f))
-                            } else {
-                                val epoch = month.atDay(dayNumber).toEpochDay()
-                                val list = byDay[epoch]
-                                val hasOpen = list != null && list.any { !it.isDone }
-                                val hasAny = list != null && list.isNotEmpty()
-                                val isSelected = epoch == selected
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .padding(2.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSelected) c.tag else Color.Transparent)
-                                        .clickNoRipple { selected = epoch },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = dayNumber.toString(),
-                                            color = if (epoch == today) c.accent else c.textPrimary,
-                                            fontSize = 14.sp,
-                                            fontWeight = if (epoch == today || isSelected) FontWeight.ExtraBold else FontWeight.Normal
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(top = 2.dp)
-                                                .size(5.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    when {
-                                                        !hasAny -> Color.Transparent
-                                                        hasOpen -> c.accent
-                                                        else -> c.textTertiary
-                                                    }
-                                                )
-                                        )
+                Column(
+                    modifier = Modifier.pointerInput(monthOffset) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                if (drag > 90f) monthOffset -= 1
+                                else if (drag < -90f) monthOffset += 1
+                                drag = 0f
+                            },
+                            onDragCancel = { drag = 0f },
+                            onHorizontalDrag = { _, amount -> drag += amount }
+                        )
+                    }
+                ) {
+                    for (r in 0 until rows) {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            for (col in 0 until 7) {
+                                val dayNumber = r * 7 + col - firstOffset + 1
+                                if (dayNumber < 1 || dayNumber > length) {
+                                    Box(modifier = Modifier.weight(1f).aspectRatio(0.85f))
+                                } else {
+                                    val epoch = month.atDay(dayNumber).toEpochDay()
+                                    val list = byDay[epoch] ?: emptyList()
+                                    val open = list.count { !it.isDone }
+                                    val done = list.size - open
+                                    val isSelected = epoch == selected
+                                    val isToday = epoch == today
+                                    val dotColor = when {
+                                        isSelected -> Color.White
+                                        open > 0 && epoch < today -> rose
+                                        open > 0 -> c.accent
+                                        else -> green
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(0.85f)
+                                            .padding(2.dp)
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .then(
+                                                if (isSelected) Modifier.background(
+                                                    Brush.linearGradient(listOf(c.accent2, c.accent))
+                                                ) else if (isToday) Modifier.background(c.tag)
+                                                else Modifier
+                                            )
+                                            .clickNoRipple { selected = epoch },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                text = dayNumber.toString(),
+                                                color = when {
+                                                    isSelected -> Color.White
+                                                    isToday -> c.accent
+                                                    else -> c.textPrimary
+                                                },
+                                                fontSize = 15.sp,
+                                                fontWeight = if (isToday || isSelected) FontWeight.ExtraBold else FontWeight.Medium
+                                            )
+                                            Row(
+                                                modifier = Modifier.padding(top = 3.dp).height(6.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                val dots = list.size.coerceAtMost(3)
+                                                for (k in 0 until dots) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(5.dp)
+                                                            .clip(CircleShape)
+                                                            .background(dotColor)
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally)
+                ) {
+                    LegendDotLabel(c.accent, "Open")
+                    LegendDotLabel(rose, "Overdue")
+                    LegendDotLabel(green, "Done")
+                }
             }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = dayTitle,
-                color = c.textPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f).padding(start = 2.dp)
-            )
-            AddButton(onClick = { showAdd = true }, diameter = 40.dp)
+            Column(modifier = Modifier.weight(1f).padding(start = 2.dp)) {
+                Text(
+                    text = dayTitle,
+                    color = c.textPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = (if (relative.isEmpty()) "" else relative + "  ") +
+                        (if (dayTasks.isEmpty()) "Free day" else dayTasks.size.toString() + " task(s)"),
+                    color = c.textSecondary,
+                    fontSize = 13.sp
+                )
+            }
+            AddButton(onClick = { showAdd = true }, diameter = 46.dp)
         }
 
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (dayTasks.isEmpty()) {
-                    Text(text = "No tasks on this day", color = c.textSecondary, fontSize = 14.sp)
+                    Text(
+                        text = "Nothing planned. Tap + to add a task for this day.",
+                        color = c.textSecondary,
+                        fontSize = 14.sp
+                    )
                 }
                 dayTasks.forEach { task ->
                     TaskRow(
@@ -595,6 +692,49 @@ fun CalendarSection() {
                         onPostpone = { scope.launch { TaskRules.postpone(context, task) } },
                         onDelete = { scope.launch { TaskRules.delete(context, task) } }
                     )
+                }
+            }
+        }
+
+        if (upcoming.isNotEmpty()) {
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Coming up",
+                        color = c.textPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    upcoming.forEach { t ->
+                        val d = t.dueEpochDay ?: today
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickNoRipple {
+                                    selected = d
+                                    val target = LocalDate.ofEpochDay(d)
+                                    val now = YearMonth.now()
+                                    monthOffset = ((target.year - now.year) * 12 + (target.monthValue - now.monthValue))
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = TaskRules.dayLabel(d, today),
+                                color = c.accent,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.width(92.dp)
+                            )
+                            Text(
+                                text = t.title,
+                                color = c.textPrimary,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             }
         }

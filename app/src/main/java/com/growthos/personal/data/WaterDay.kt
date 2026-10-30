@@ -16,6 +16,9 @@ data class WaterDay(
 
 @Dao
 interface WaterDao {
+    @Query("SELECT * FROM water_days WHERE epochDay >= :fromDay")
+    fun observeSince(fromDay: Long): Flow<List<WaterDay>>
+
     @Query("SELECT glasses FROM water_days WHERE epochDay = :epochDay")
     fun observe(epochDay: Long): Flow<Int?>
 

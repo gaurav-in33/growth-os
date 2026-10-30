@@ -77,17 +77,88 @@ fun CheckinCard(compact: Boolean = true) {
     val today = remember { LocalDate.now().toEpochDay() }
     val flow = remember(dao) { dao.observe(today) }
     val saved by flow.collectAsState(initial = null)
+    val weekFlow = remember(dao) { dao.observeBetween(today - 6, today) }
+    val weekList by weekFlow.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val current = saved ?: DayCheckin(epochDay = today, mood = 0, energy = 0, sleepMinutes = 0)
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             TileLabel(if (compact) "How are you feeling?" else "Today's check-in")
-            RatingRow("Mood", current.mood) { v ->
+            EmojiRatingRow(
+                label = "Mood",
+                emojis = listOf("\uD83D\uDE1E", "\uD83D\uDE41", "\uD83D\uDE10", "\uD83D\uDE42", "\uD83D\uDE04"),
+                names = listOf("Very low", "Low", "Okay", "Good", "Great"),
+                value = current.mood
+            ) { v ->
                 scope.launch { dao.upsert(current.copy(mood = if (current.mood == v) 0 else v)) }
             }
-            RatingRow("Energy", current.energy) { v ->
+            EmojiRatingRow(
+                label = "Energy",
+                emojis = listOf("\uD83D\uDE34", "\uD83E\uDD71", "\uD83D\uDE10", "\uD83D\uDCAA", "\u26A1"),
+                names = listOf("Drained", "Low", "Normal", "Good", "Charged"),
+                value = current.energy
+            ) { v ->
                 scope.launch { dao.upsert(current.copy(energy = if (current.energy == v) 0 else v)) }
+            }
+            val advice = checkinAdvice(current.mood, current.energy)
+            if (advice != null) {
+                Text(
+                    text = advice,
+                    color = c.textPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(c.tag)
+                        .padding(12.dp)
+                )
+            }
+            val moodSeries = (0..6).map { i ->
+                weekList.firstOrNull { it.epochDay == today - 6 + i }?.mood?.toFloat() ?: 0f
+            }
+            val energySeries = (0..6).map { i ->
+                weekList.firstOrNull { it.epochDay == today - 6 + i }?.energy?.toFloat() ?: 0f
+            }
+            val dayLabels = (0..6).map { i ->
+                LocalDate.ofEpochDay(today - 6 + i).dayOfWeek.name.substring(0, 1)
+            }
+            if (moodSeries.any { it > 0f } || energySeries.any { it > 0f }) {
+                Text(
+                    text = "Last 7 days",
+                    color = c.textSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                TrendLines(
+                    series = listOf(moodSeries, energySeries),
+                    colors = listOf(c.accent, ChartPurple),
+                    labels = dayLabels,
+                    maxValue = 5f,
+                    height = 70.dp
+                )
+                val moodDays = moodSeries.filter { it > 0f }
+                val energyDays = energySeries.filter { it > 0f }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    LegendDotLabel(
+                        c.accent,
+                        "Mood avg " + (if (moodDays.isEmpty()) "-" else String.format("%.1f", moodDays.average()))
+                    )
+                    LegendDotLabel(
+                        ChartPurple,
+                        "Energy avg " + (if (energyDays.isEmpty()) "-" else String.format("%.1f", energyDays.average()))
+                    )
+                }
+            } else {
+                Text(
+                    text = "Log mood and energy daily to see your 7 day trend here.",
+                    color = c.textTertiary,
+                    fontSize = 12.sp
+                )
             }
             if (!compact) {
                 val bed = current.bedtimeMinute
@@ -197,5 +268,67 @@ private fun TimeButton(
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+private fun checkinAdvice(mood: Int, energy: Int): String? {
+    if (mood == 0 && energy == 0) return null
+    return when {
+        energy in 1..2 && mood in 1..2 -> "Tough day. Keep it light: one small win, some water, a short walk. That counts."
+        energy in 1..2 -> "Low energy: do easy tasks first, drink water and take a 10 minute break."
+        mood in 1..2 -> "Mood is low. Pick one tiny task and finish it. Talk to someone you trust if this continues."
+        energy >= 4 && mood >= 4 -> "Great state. Do your hardest task or a focus session right now."
+        energy >= 4 -> "High energy: good time for deep work or a workout."
+        mood >= 4 -> "Good mood: a great time to learn something or plan your week."
+        else -> "Steady day. Choose 2 or 3 important tasks and one focus session."
+    }
+}
+
+@Composable
+fun EmojiRatingRow(
+    label: String,
+    emojis: List<String>,
+    names: List<String>,
+    value: Int,
+    onPick: (Int) -> Unit
+) {
+    val c = Growth.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = label,
+                color = c.textSecondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+            if (value in 1..5) {
+                Text(
+                    text = names[value - 1],
+                    color = c.accent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            (1..5).forEach { v ->
+                val on = value == v
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (on) Brush.linearGradient(listOf(c.accent2, c.accent))
+                            else SolidColor(c.track)
+                        )
+                        .clickNoRipple { onPick(v) }
+                        .padding(vertical = 11.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = emojis[v - 1], fontSize = if (on) 26.sp else 22.sp)
+                }
+            }
+        }
     }
 }

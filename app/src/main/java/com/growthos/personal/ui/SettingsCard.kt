@@ -23,10 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.app.Activity
-import android.content.Intent
 import com.growthos.personal.data.BackupTools
-import com.growthos.personal.data.ClearTools
 import com.growthos.personal.data.SettingsStore
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
@@ -40,8 +37,6 @@ fun SettingsCard() {
     val scope = rememberCoroutineScope()
     var message by remember { mutableStateOf<String?>(null) }
     var confirmRestore by remember { mutableStateOf(false) }
-    var confirmClear by remember { mutableStateOf(false) }
-    var clearText by remember { mutableStateOf("") }
 
     val version = remember {
         try {
@@ -117,7 +112,7 @@ fun SettingsCard() {
             }
             Text(text = "Backup", color = c.textPrimary, fontSize = 15.sp)
             Text(
-                text = "Your data is stored only on this phone. Internet is used only if you turn on the AI assistant. " +
+                text = "Your data is stored only on this phone and the app has no internet access. " +
                     "Save a backup file now and then (for example into Google Drive from the Files screen).",
                 color = c.textSecondary,
                 fontSize = 13.sp
@@ -145,57 +140,10 @@ fun SettingsCard() {
                 color = c.textSecondary,
                 fontSize = 12.sp
             )
-            Text(text = "Danger zone", color = c.textPrimary, fontSize = 15.sp)
-            TextButton(onClick = {
-                clearText = ""
-                confirmClear = true
-            }) {
-                Text("Clear all data", color = Color(0xFFE5484D))
-            }
             if (version.isNotEmpty()) {
                 Text(text = "Growth OS version $version", color = c.textSecondary, fontSize = 12.sp)
             }
         }
-    }
-
-    if (confirmClear) {
-        AlertDialog(
-            onDismissRequest = { confirmClear = false },
-            title = { Text("Clear all data?") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("This deletes EVERYTHING on this phone: tasks, habits, goals, notes, money, logs, alarms and reminders. It cannot be undone. Export a backup first if you want to keep anything.")
-                    Text("Type DELETE to confirm.")
-                    OutlinedTextField(
-                        value = clearText,
-                        onValueChange = { clearText = it },
-                        singleLine = true,
-                        colors = glassFieldColors()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = clearText.trim() == "DELETE",
-                    onClick = {
-                        confirmClear = false
-                        scope.launch {
-                            withContext(Dispatchers.IO) { ClearTools.clearEverything(context) }
-                            ThemePrefs.mode = 0
-                            val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                            if (launch != null) {
-                                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                                context.startActivity(launch)
-                            }
-                            (context as? Activity)?.finishAffinity()
-                        }
-                    }
-                ) { Text("Delete everything", color = Color(0xFFE5484D)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmClear = false }) { Text("Cancel") }
-            }
-        )
     }
 
     if (confirmRestore) {

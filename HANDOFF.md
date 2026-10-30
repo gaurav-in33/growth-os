@@ -5,7 +5,7 @@ Give code as growth-os-project.zip with ONLY changed files at real paths (app/sr
 
 ## Project
 Growth OS = private native Android app (Kotlin, Jetpack Compose, Room), package com.growthos.personal, repo github.com/gaurav-in33/growth-os (public).
-Current: v1.14.0, DB v9. A-D verified. E (Onboarding, v1.9.0) and F (Clear All Data, v1.10.0) G (AI, v1.11.0) and H (widget, v1.12.0) built, NOT yet verified.
+Current: v1.15.0, DB v9 (no schema change). A-D verified. E (Onboarding, v1.9.0) and F (Clear All Data, v1.10.0) G (AI, v1.11.0) and H (widget, v1.12.0) built, NOT yet verified.
 
 ## How updates work (do not change)
 1. You give growth-os-project.zip (only changed files).
@@ -36,3 +36,12 @@ XP drops 5 when a recurring task rolls over (XP counts done tasks). Rest day giv
 ## Notes
 Alarm: AlarmService plays ringtone on ALARM stream, 5 min auto stop; Plan > Routine > Alarm check has Fix buttons and Test alarm/Test reminder. Phone looks like Xiaomi: Autostart ON + Battery no restrictions needed.
 Name: ProfileStore saved name is edited in More > Settings.
+
+
+## v1.15.0 changes (phone feedback round)
+- Removed AI assistant and Clear all data (files emptied, INTERNET permission removed; zip cannot delete files).
+- Widgets: Small/Medium/Large (TodayWidgetSmall, TodayWidget, TodayWidgetLarge) with progress ring bitmap.
+- Alarm screen redesigned (pulsing rings, big I'm awake).
+- Routine: tap card = done/strike, edit moved to menu, ThemedDialog (Dialogs.kt), header spacing fixed.
+- Calendar rewritten (dots, swipe, today button, coming up). Mood/Energy: emoji, advice, 7-day trend.
+- Report: StatTile snapshot + Trends charts (Charts.kt, TrendsCard.kt). Money rewritten (balance, donut, by-day bars, add/edit/delete, date picker).

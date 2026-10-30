@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:text="Growth OS - Thursday"
+        android:textColor="#1D1B2E"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:layout_width="90dp"
+            android:layout_height="90dp">
+
+            <ImageView
+                android:id="@+id/widget_ring"
+                android:layout_width="90dp"
+                android:layout_height="90dp"
+                android:contentDescription="Progress" />
+
+            <TextView
+                android:id="@+id/widget_percent"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="60%"
+                android:textColor="#1D1B2E"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tasks 2/5   Habits 2/5"
+                android:textColor="#1D1B2E"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_habits"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Routine 6/12"
+                android:textColor="#5C6078"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/widget_extra"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Water 4/8   Focus 50 min"
+                android:textColor="#FF7A2F"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="UP NEXT"
+        android:textColor="#5C6078"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_task1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Sample task"
+            android:textColor="#1D1B2E"
+            android:textSize="14sp"
+             />
+        <TextView
+            android:id="@+id/widget_task2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="#1D1B2E"
+            android:textSize="14sp"
+             />
+        <TextView
+            android:id="@+id/widget_task3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="#1D1B2E"
+            android:textSize="14sp"
+             />
+        <TextView
+            android:id="@+id/widget_task4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="#1D1B2E"
+            android:textSize="14sp"
+             />
+        <TextView
+            android:id="@+id/widget_task5"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="#1D1B2E"
+            android:textSize="14sp"
+             />
+        <TextView
+            android:id="@+id/widget_task6"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="#1D1B2E"
+            android:textSize="14sp"
+             />
+        <TextView
+            android:id="@+id/widget_task7"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="#1D1B2E"
+            android:textSize="14sp"
+             />
+</LinearLayout>
