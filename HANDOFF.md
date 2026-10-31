@@ -5,7 +5,8 @@ Give code as growth-os-project.zip with ONLY changed files at real paths (app/sr
 
 ## Project
 Growth OS = private native Android app (Kotlin, Jetpack Compose, Room), package com.growthos.personal, repo github.com/gaurav-in33/growth-os (public).
-Current: v1.15.0, DB v9 (no schema change). A-D verified. E (Onboarding, v1.9.0) and F (Clear All Data, v1.10.0) G (AI, v1.11.0) and H (widget, v1.12.0) built, NOT yet verified.
+Current: v1.16.0 (Report = Tiles design, Widgets = Big number design, Small+Wide only, StatTile clash fixed -> EmojiTile).
+Prev: v1.15.0, DB v9 (no schema change). A-D verified. E (Onboarding, v1.9.0) and F (Clear All Data, v1.10.0) G (AI, v1.11.0) and H (widget, v1.12.0) built, NOT yet verified.
 
 ## How updates work (do not change)
 1. You give growth-os-project.zip (only changed files).

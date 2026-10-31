@@ -4,46 +4,46 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
-    android:gravity="center"
+    android:gravity="center_vertical"
     android:orientation="vertical"
-    android:padding="10dp">
-
-    <FrameLayout
-        android:layout_width="84dp"
-        android:layout_height="84dp">
-
-        <ImageView
-            android:id="@+id/widget_ring"
-            android:layout_width="84dp"
-            android:layout_height="84dp"
-            android:contentDescription="Progress" />
-
-        <TextView
-            android:id="@+id/widget_percent"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="60%"
-            android:textColor="#1D1B2E"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-    </FrameLayout>
+    android:padding="14dp">
 
     <TextView
-        android:id="@+id/widget_summary"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="3 tasks left"
-        android:textColor="#1D1B2E"
-        android:textSize="13sp"
+        android:maxLines="1"
+        android:text="TODAY"
+        android:textColor="#7D7590"
+        android:textSize="11sp"
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/widget_habits"
-        android:layout_width="wrap_content"
+        android:id="@+id/widget_count"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Habits 2/5"
-        android:textColor="#5C6078"
-        android:textSize="11sp" />
+        android:fontFamily="sans-serif-light"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="2"
+        android:textColor="#FF7A2F"
+        android:textSize="52sp" />
+
+    <TextView
+        android:id="@+id/widget_unit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:text="tasks left"
+        android:textColor="#1B1630"
+        android:textSize="14sp" />
+
+    <ProgressBar
+        android:id="@+id/widget_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="10dp"
+        android:max="100"
+        android:progress="60"
+        android:progressDrawable="@drawable/widget_progress" />
 </LinearLayout>

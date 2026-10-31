@@ -82,32 +82,32 @@ fun DailyReviewCard() {
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("\u2705", "Tasks", tasksDone.toString() + "/" + todayTasks.size, Modifier.weight(1f), ratio(tasksDone, todayTasks.size))
-                StatTile("\uD83D\uDD01", "Habits", habitsDone.toString() + "/" + habits.size, Modifier.weight(1f), ratio(habitsDone, habits.size))
+                EmojiTile("\u2705", "Tasks", tasksDone.toString() + "/" + todayTasks.size, Modifier.weight(1f), ratio(tasksDone, todayTasks.size))
+                EmojiTile("\uD83D\uDD01", "Habits", habitsDone.toString() + "/" + habits.size, Modifier.weight(1f), ratio(habitsDone, habits.size))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile(
+                EmojiTile(
                     "\uD83D\uDDD3\uFE0F", "Routine",
                     if (routinePaused) "Paused" else routineDone.toString() + "/" + routineItems.size,
                     Modifier.weight(1f),
                     if (routinePaused) null else ratio(routineDone, routineItems.size)
                 )
-                StatTile("\u23F1\uFE0F", "Focus", focusMinutes.toString() + " min", Modifier.weight(1f))
+                EmojiTile("\u23F1\uFE0F", "Focus", focusMinutes.toString() + " min", Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("\uD83D\uDCA7", "Water", (water ?: 0).toString() + "/8", Modifier.weight(1f), ratio(water ?: 0, 8))
-                StatTile("\uD83D\uDCDA", "Study + coding", studyMin.toString() + " min", Modifier.weight(1f))
+                EmojiTile("\uD83D\uDCA7", "Water", (water ?: 0).toString() + "/8", Modifier.weight(1f), ratio(water ?: 0, 8))
+                EmojiTile("\uD83D\uDCDA", "Study + coding", studyMin.toString() + " min", Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("\uD83C\uDFCB\uFE0F", "Workout", workoutMin.toString() + " min", Modifier.weight(1f))
-                StatTile("\uD83D\uDE34", "Sleep", if (sleep > 0) formatSleepMinutes(sleep) else "-", Modifier.weight(1f))
+                EmojiTile("\uD83C\uDFCB\uFE0F", "Workout", workoutMin.toString() + " min", Modifier.weight(1f))
+                EmojiTile("\uD83D\uDE34", "Sleep", if (sleep > 0) formatSleepMinutes(sleep) else "-", Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("\uD83D\uDE42", "Mood", if (mood > 0) mood.toString() + "/5" else "-", Modifier.weight(1f))
-                StatTile("\u26A1", "Energy", if (energy > 0) energy.toString() + "/5" else "-", Modifier.weight(1f))
+                EmojiTile("\uD83D\uDE42", "Mood", if (mood > 0) mood.toString() + "/5" else "-", Modifier.weight(1f))
+                EmojiTile("\u26A1", "Energy", if (energy > 0) energy.toString() + "/5" else "-", Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("\uD83D\uDCB8", "Spent today", formatRupees(spentToday), Modifier.weight(1f))
+                EmojiTile("\uD83D\uDCB8", "Spent today", formatRupees(spentToday), Modifier.weight(1f))
                 val stamp = wake
                 val wakeText = if (!settings.wakeEnabled()) "Off"
                 else if (stamp == null) "Not yet"
@@ -115,7 +115,7 @@ fun DailyReviewCard() {
                     val z = Instant.ofEpochMilli(stamp).atZone(ZoneId.systemDefault())
                     formatMinute(z.hour * 60 + z.minute)
                 }
-                StatTile("\u23F0", "Wake-up", wakeText, Modifier.weight(1f))
+                EmojiTile("\u23F0", "Wake-up", wakeText, Modifier.weight(1f))
             }
             if (openTasks.isNotEmpty()) {
                 Text(

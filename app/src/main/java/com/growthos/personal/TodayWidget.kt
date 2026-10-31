@@ -17,8 +17,6 @@ import com.growthos.personal.data.TaskEntity
 import com.growthos.personal.data.TaskRules
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
@@ -123,23 +121,31 @@ object WidgetData {
         views.setOnClickPendingIntent(R.id.widget_root, tap)
     }
 
+    /** Big-number look: tasks left, progress bar. Shared by small and wide widgets. */
+    fun bindCount(v: RemoteViews, snap: WidgetSnapshot) {
+        val left = snap.open.size
+        v.setTextViewText(R.id.widget_count, left.toString())
+        v.setTextViewText(
+            R.id.widget_unit,
+            if (left == 0) "all clear" else if (left == 1) "task left" else "tasks left"
+        )
+        val pct = if (snap.tasksTotal == 0) 100 else snap.tasksDone * 100 / snap.tasksTotal
+        v.setProgressBar(R.id.widget_bar, 100, pct, false)
+    }
+
     fun percent(snap: WidgetSnapshot): String = (snap.progress * 100).toInt().toString() + "%"
 }
 
-/** Medium widget (4x2). Name kept so a widget already on the home screen keeps working. */
+/** Wide widget (4x2). Name kept so a widget already on the home screen keeps working. */
 class TodayWidget : BaseTodayWidget() {
 
     override fun build(context: Context, snap: WidgetSnapshot): RemoteViews {
         val v = RemoteViews(context.packageName, R.layout.widget_today)
-        v.setImageViewBitmap(R.id.widget_ring, WidgetData.ring(snap.progress, 220))
-        v.setTextViewText(R.id.widget_percent, WidgetData.percent(snap))
+        WidgetData.bindCount(v, snap)
         v.setTextViewText(
-            R.id.widget_title,
-            if (snap.open.isEmpty()) "All clear today" else "Today - " + snap.open.size + " left"
+            R.id.widget_task1,
+            if (snap.open.isEmpty()) "Nothing due. Enjoy!" else WidgetData.line(snap.open.getOrNull(0), snap.today)
         )
-        v.setTextViewText(R.id.widget_task1, if (snap.open.isEmpty()) "Nothing due. Enjoy!" else WidgetData.line(snap.open.getOrNull(0), snap.today))
-        v.setTextViewText(R.id.widget_task2, WidgetData.line(snap.open.getOrNull(1), snap.today))
-        v.setTextViewText(R.id.widget_task3, WidgetData.line(snap.open.getOrNull(2), snap.today))
         v.setTextViewText(
             R.id.widget_habits,
             "Habits " + snap.habitsDone + "/" + snap.habitsTotal + "   Water " + snap.water + "/8"
@@ -149,7 +155,7 @@ class TodayWidget : BaseTodayWidget() {
     }
 
     companion object {
-        /** Refreshes every Growth OS widget (small, medium, large). Safe to call from anywhere. */
+        /** Refreshes every Growth OS widget (small and wide). Safe to call from anywhere. */
         fun refresh(context: Context) {
             val app = context.applicationContext
             Thread {
@@ -158,8 +164,7 @@ class TodayWidget : BaseTodayWidget() {
                     val snap = WidgetData.load(app)
                     val providers = listOf<Pair<Class<*>, BaseTodayWidget>>(
                         TodayWidget::class.java to TodayWidget(),
-                        TodayWidgetSmall::class.java to TodayWidgetSmall(),
-                        TodayWidgetLarge::class.java to TodayWidgetLarge()
+                        TodayWidgetSmall::class.java to TodayWidgetSmall()
                     )
                     for (p in providers) {
                         val ids = manager.getAppWidgetIds(ComponentName(app, p.first))
@@ -172,49 +177,12 @@ class TodayWidget : BaseTodayWidget() {
     }
 }
 
-/** Small widget (2x2): progress ring and tasks left. */
+/** Small widget (2x2): big tasks-left number and progress bar. */
 class TodayWidgetSmall : BaseTodayWidget() {
 
     override fun build(context: Context, snap: WidgetSnapshot): RemoteViews {
         val v = RemoteViews(context.packageName, R.layout.widget_small)
-        v.setImageViewBitmap(R.id.widget_ring, WidgetData.ring(snap.progress, 200))
-        v.setTextViewText(R.id.widget_percent, WidgetData.percent(snap))
-        v.setTextViewText(
-            R.id.widget_summary,
-            if (snap.open.isEmpty()) "All clear" else snap.open.size.toString() + " left"
-        )
-        v.setTextViewText(R.id.widget_habits, "Habits " + snap.habitsDone + "/" + snap.habitsTotal)
-        WidgetData.openApp(context, v)
-        return v
-    }
-}
-
-/** Large widget (4x4): ring, stats and up to 7 tasks. */
-class TodayWidgetLarge : BaseTodayWidget() {
-
-    override fun build(context: Context, snap: WidgetSnapshot): RemoteViews {
-        val v = RemoteViews(context.packageName, R.layout.widget_large)
-        v.setImageViewBitmap(R.id.widget_ring, WidgetData.ring(snap.progress, 240))
-        v.setTextViewText(R.id.widget_percent, WidgetData.percent(snap))
-        v.setTextViewText(
-            R.id.widget_title,
-            "Growth OS - " + LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMM", Locale.ENGLISH))
-        )
-        v.setTextViewText(
-            R.id.widget_summary,
-            "Tasks " + snap.tasksDone + "/" + snap.tasksTotal + "   Habits " + snap.habitsDone + "/" + snap.habitsTotal
-        )
-        v.setTextViewText(R.id.widget_habits, "Routine " + snap.routineDone + "/" + snap.routineTotal)
-        v.setTextViewText(R.id.widget_extra, "Water " + snap.water + "/8   Focus " + snap.focusMin + " min")
-        val ids = listOf(
-            R.id.widget_task1, R.id.widget_task2, R.id.widget_task3, R.id.widget_task4,
-            R.id.widget_task5, R.id.widget_task6, R.id.widget_task7
-        )
-        for (i in ids.indices) {
-            val text = if (i == 0 && snap.open.isEmpty()) "Nothing due. Enjoy your day!"
-            else WidgetData.line(snap.open.getOrNull(i), snap.today)
-            v.setTextViewText(ids[i], text)
-        }
+        WidgetData.bindCount(v, snap)
         WidgetData.openApp(context, v)
         return v
     }

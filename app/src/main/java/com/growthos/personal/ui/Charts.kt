@@ -230,7 +230,7 @@ fun DonutChart(
 }
 
 @Composable
-fun StatTile(
+fun EmojiTile(
     emoji: String,
     label: String,
     value: String,

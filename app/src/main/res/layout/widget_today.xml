@@ -5,87 +5,81 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
     android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:padding="14dp">
+    android:orientation="vertical"
+    android:paddingBottom="12dp"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:paddingTop="12dp">
 
-    <FrameLayout
-        android:layout_width="84dp"
-        android:layout_height="84dp">
-
-        <ImageView
-            android:id="@+id/widget_ring"
-            android:layout_width="84dp"
-            android:layout_height="84dp"
-            android:contentDescription="Progress" />
-
-        <TextView
-            android:id="@+id/widget_percent"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="60%"
-            android:textColor="#1D1B2E"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-    </FrameLayout>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:text="GROWTH OS  -  TODAY"
+        android:textColor="#7D7590"
+        android:textSize="11sp"
+        android:textStyle="bold" />
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="14dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:gravity="bottom"
+        android:orientation="horizontal">
 
         <TextView
-            android:id="@+id/widget_title"
-            android:layout_width="match_parent"
+            android:id="@+id/widget_count"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-light"
+            android:includeFontPadding="false"
             android:maxLines="1"
-            android:text="Today - 3 tasks left"
-            android:textColor="#1D1B2E"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_task1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Sample task"
-            android:textColor="#1D1B2E"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/widget_task2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="#1D1B2E"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/widget_task3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="#1D1B2E"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/widget_habits"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:maxLines="1"
-            android:text="Habits 2/5   Water 4/8"
+            android:text="2"
             android:textColor="#FF7A2F"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:textSize="46sp" />
+
+        <TextView
+            android:id="@+id/widget_unit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
+            android:layout_marginBottom="6dp"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="tasks left"
+            android:textColor="#1B1630"
+            android:textSize="17sp" />
     </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/widget_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="4dp"
+        android:max="100"
+        android:progress="60"
+        android:progressDrawable="@drawable/widget_progress" />
+
+    <TextView
+        android:id="@+id/widget_task1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="Finish workout"
+        android:textColor="#1B1630"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/widget_habits"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="Habits 3/5   Water 5/8"
+        android:textColor="#FF7A2F"
+        android:textSize="12sp"
+        android:textStyle="bold" />
 </LinearLayout>
