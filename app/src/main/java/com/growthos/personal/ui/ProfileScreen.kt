@@ -56,7 +56,6 @@ fun ProfileScreen(name: String, onSaveName: (String) -> Unit) {
                 0 -> {
                     ProfileHeader(name = name)
                     ScoreCard()
-                    DailyReviewCard()
                     WeeklyReportCard()
                 }
                 1 -> FinanceCard()
