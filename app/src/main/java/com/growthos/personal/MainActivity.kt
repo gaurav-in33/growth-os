@@ -33,6 +33,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.draw.clipToBounds
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -107,6 +116,42 @@ fun GrowthApp(initialTab: Int = 0) {
     var name by remember { mutableStateOf(store.name()) }
     var selected by rememberSaveable { mutableIntStateOf(initialTab) }
     val scope = rememberCoroutineScope()
+
+    // `selected` moves the nav bubble at once; `shown` swaps the screen one frame later.
+    var shown by rememberSaveable { mutableIntStateOf(initialTab) }
+    // Tabs stay alive once opened (hidden at 0 size), so switching is instant.
+    val visited = remember { mutableStateListOf(shown) }
+    var dayKey by remember { mutableLongStateOf(LocalDate.now().toEpochDay()) }
+
+    LaunchedEffect(selected) {
+        withFrameNanos { }
+        shown = selected
+        if (selected !in visited) visited.add(selected)
+    }
+
+    // Warm the other tabs in the background after start.
+    LaunchedEffect(onboarded) {
+        if (onboarded) {
+            delay(1200)
+            for (i in 0..4) {
+                if (i !in visited) visited.add(i)
+                delay(400)
+            }
+        }
+    }
+
+    // New day: rebuild the tabs so dates and counters refresh.
+    val activity = context as? ComponentActivity
+    DisposableEffect(activity) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val today = LocalDate.now().toEpochDay()
+                if (today != dayKey) dayKey = today
+            }
+        }
+        activity?.lifecycle?.addObserver(observer)
+        onDispose { activity?.lifecycle?.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { ReminderScheduler.rescheduleAll(context) }
@@ -196,19 +241,28 @@ fun GrowthApp(initialTab: Int = 0) {
                             )
                         }
                 ) {
-                    when (selected) {
-                        0 -> TodayScreen(name = name, onOpenPlan = { selected = 1 })
-                        1 -> PlanScreen()
-                        2 -> TrackScreen()
-                        3 -> GrowScreen()
-                        4 -> ProfileScreen(
-                            name = name,
-                            onSaveName = { newName ->
-                                store.setName(newName)
-                                name = newName
+                    for (i in visited.toList()) {
+                        key(i, dayKey) {
+                            Box(
+                                modifier = if (i == shown) Modifier.fillMaxSize()
+                                else Modifier.size(0.dp).clipToBounds()
+                            ) {
+                                when (i) {
+                                    0 -> TodayScreen(name = name, onOpenPlan = { selected = 1 })
+                                    1 -> PlanScreen()
+                                    2 -> TrackScreen()
+                                    3 -> GrowScreen()
+                                    4 -> ProfileScreen(
+                                        name = name,
+                                        onSaveName = { newName ->
+                                            store.setName(newName)
+                                            name = newName
+                                        }
+                                    )
+                                    else -> PlaceholderScreen(title = tabs[i].label)
+                                }
                             }
-                        )
-                        else -> PlaceholderScreen(title = tabs[selected].label)
+                        }
                     }
                 }
                 GlassNavBar(
